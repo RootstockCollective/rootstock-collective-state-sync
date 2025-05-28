@@ -1,0 +1,132 @@
+blockchain:
+  network: "testnet"
+database:
+  schema: "public"
+  host: "localhost"
+  port: 5432
+  user: "test"
+  password: "test"
+  database: "test"
+  batchSize: 1000
+thegraph:
+  - name: CollectiveRewards
+    endpoint: "https://api.studio.thegraph.com/query/106677/rootstockcollective-collective-rewards-local-2/version/latest"
+    maxRowsPerRequest: 1000
+  - name: Proposals
+    endpoint: "https://api.studio.thegraph.com/query/106677/rootstockcollective-collective-rewards-local-2/version/latest"
+    maxRowsPerRequest: 1000
+contracts:
+  - name: BackersManager
+    address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"
+    abis: 
+      - BackersManagerAbi
+      - CycleTimeKeeperAbi
+entities:
+  - name: BlockChangeLog
+    columns:
+      - name: id
+        type: Bytes
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: updatedEntities
+        type: [String]
+    primaryKeys:
+      - id
+  - name: BackerStakingHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: backerTotalAllocation
+        type: BigInt
+      - name: accumulatedTime
+        type: BigInt
+      - name: lastBlockNumber
+        type: BigInt
+      - name: lastBlockTimestamp
+        type: BigInt
+      - name: gauges
+        type: [GaugeStakingHistory]
+        references:
+          - backer
+    primaryKeys:
+      - id
+  - name: GaugeStakingHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: gauge
+        type: Bytes
+      - name: backer
+        type: BackerStakingHistory
+      - name: allocation
+        type: BigInt
+      - name: accumulatedAllocationsTime
+        type: BigInt
+      - name: lastBlockNumber
+        type: BigInt
+      - name: lastBlockTimestamp
+        type: BigInt
+    primaryKeys:
+      - id
+  - name: Builder
+    columns:
+      - name: id
+        type: Bytes
+      - name: gauge
+        type: Bytes
+      - name: rewardReceiver
+        type: Bytes
+      - name: isHalted
+        type: Boolean
+      - name: totalAllocation
+        type: BigInt
+      - name: rewardShares
+        type: BigInt
+      - name: state
+        type: BuilderState
+        references:
+          - builder 
+      - name: rewardsClaimed
+        type: [BuilderRewardsClaimed]
+        references:
+          - builder
+    primaryKeys:
+      - id
+  - name: BuilderState
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: initialized
+        type: Boolean
+      - name: kycApproved
+        type: Boolean
+      - name: communityApproved
+        type: Boolean
+      - name: kycPaused
+        type: Boolean
+      - name: selfPaused
+        type: Boolean
+      - name: pausedReason
+        type: Bytes
+    primaryKeys:
+      - id
+  - name: BuilderRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+    primaryKeys:
+        - id
+
+
+
+
