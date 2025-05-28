@@ -1,0 +1,147 @@
+import { executeRequests } from '../context/theGraph';
+import { createEntityQueries } from '../handlers/queryBuilder';
+import { EntityChange } from '../watchers/strategies/types';
+import { executeUpsert } from '../handlers/dbUpsert';
+import { AppContext } from '../context/types';
+
+
+interface EntitySyncStatus {
+    entityName: string;
+    lastProcessedId: string | null;
+    isComplete: boolean;
+    totalProcessed: number;
+}
+
+
+const createInitialStatus = (entityName: string): EntitySyncStatus => ({
+    entityName,
+    lastProcessedId: null,
+    isComplete: false,
+    totalProcessed: 0
+});
+
+const updateStatus = (
+    currentStatus: EntitySyncStatus,
+    lastId: string | null,
+    processedCount: number,
+    maxRowsPerRequest: number
+): EntitySyncStatus => {
+    const isComplete = processedCount < maxRowsPerRequest;
+    return {
+        ...currentStatus,
+        lastProcessedId: lastId,
+        isComplete,
+        totalProcessed: currentStatus.totalProcessed + processedCount
+    };
+};
+
+const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint) => ({
+    ...(lastProcessedId ? { id_gt: lastProcessedId } : { id_gt: '0x00' }),
+    ...(blockNumber ? { _change_block: { number_gte: blockNumber } } : {})
+});
+
+const collectEntityData = async (
+    context: AppContext,
+    entities: string[],
+    blockNumber?: bigint
+): Promise<Map<string, any[]>> => {
+    const { schema, graphqlContext } = context;
+    const entityStatus = new Map<string, EntitySyncStatus>();
+    entities.forEach(entityName => {
+        entityStatus.set(entityName, createInitialStatus(entityName));
+    });
+
+    const entityData = new Map<string, any[]>();
+
+    let requests = createEntityQueries(schema, entities, {
+        first: graphqlContext.pagination.maxRowsPerRequest,
+        filters: buildFilters(undefined, blockNumber)
+    });
+
+    while (requests.length > 0) {
+        const results = await executeRequests(graphqlContext, requests);
+        console.log('Batch results:', Array.from(results.entries()).map(([entity, data]) => `${entity}: ${data.length} records`));
+
+        requests = [];
+        for (const [entityName, data] of results) {
+            const currentStatus = entityStatus.get(entityName)!;
+            const lastId = data.length > 0 ? data[data.length - 1].id : null;
+            console.log(`Entity ${entityName}: Last ID from batch: ${lastId}, Records in batch: ${data.length}`);
+
+            const newStatus = updateStatus(
+                currentStatus,
+                lastId,
+                data.length,
+                graphqlContext.pagination.maxRowsPerRequest
+            );
+            entityStatus.set(entityName, newStatus);
+            console.log(`Entity ${entityName} status:`, {
+                lastProcessedId: newStatus.lastProcessedId,
+                isComplete: newStatus.isComplete,
+                totalProcessed: newStatus.totalProcessed
+            });
+
+            if (!newStatus.isComplete && newStatus.lastProcessedId) {
+                const nextQueries = createEntityQueries(schema, [entityName], {
+                    first: graphqlContext.pagination.maxRowsPerRequest,
+                    filters: buildFilters(newStatus.lastProcessedId, blockNumber)
+                });
+                requests.push(...nextQueries);
+            } else {
+                console.log(`No more queries needed for ${entityName}. Complete: ${newStatus.isComplete}, Last ID: ${newStatus.lastProcessedId}`);
+            }
+
+            if (data.length > 0) {
+                const existingData = entityData.get(entityName) || [];
+                entityData.set(entityName, [...existingData, ...data]);
+            }
+
+            console.log(`Processed ${newStatus.totalProcessed} records for ${entityName}`);
+        }
+
+        console.log(`Created ${requests.length} queries for next batch`);
+    }
+
+    return entityData;
+};
+
+const processEntityData = async (
+    context: AppContext,
+    entityData: Map<string, any[]>
+): Promise<void> => {
+    const { dbContext, schema } = context;
+    console.log('Processing all collected data...');
+    for (const [entityName, data] of entityData) {
+        if (data.length > 0) {
+            console.log(`Upserting ${data.length} records for ${entityName}`);
+            await executeUpsert(dbContext, entityName, data, schema);
+        }
+    }
+    console.log('Completed processing all data');
+};
+
+export const syncEntities = async (
+    context: AppContext,
+    entities: string[],
+    blockNumber?: bigint
+): Promise<void> => {
+    const entityData = await collectEntityData(context, entities, blockNumber);
+    await processEntityData(context, entityData);
+};
+
+export const syncAllEntities = async (context: AppContext): Promise<void> => {
+    console.log('Starting sync for all entities');
+    const entities = Array.from(context.schema.entities.keys());
+    await syncEntities(context, entities);
+    console.log('Completed sync for all entities');
+};
+
+export const createEntityChangeHandler = (context: AppContext) => {
+    const handleEntityChange = async (change: EntityChange): Promise<void> => {
+        console.log("🚀 ~ handleEntityChange ~ change:", change);
+        const { entities, blockNumber } = change;
+        const validEntities = entities.filter(entityName => context.schema.entities.has(entityName));
+        await syncEntities(context, validEntities, blockNumber);
+    };
+    return handleEntityChange;
+}; 
