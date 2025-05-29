@@ -1,26 +1,26 @@
-import { PublicClient } from 'viem';
+
 import { BlockChangeLog, ChangeStrategy } from './types';
 import { createEntityQuery } from '../../handlers/queryBuilder';
 import { executeRequests } from '../../context/theGraph';
-import { TheGraphContext } from '../../context/theGraph';  
-import { DatabaseSchema } from '../../handlers/types';
 import { AppContext } from '../../context/types';
+import { getLastProcessedBlock } from '../blockWatcher';
 
+const createStrategy = (): ChangeStrategy => {
 
-const createStrategy = (lastProcessedBlock: BlockChangeLog): ChangeStrategy => {
   const detectChanges = async (params: {
     context: AppContext;
-    client: PublicClient;
   }): Promise<{
     entities: string[];
     fromBlock: bigint;
   }> => {
-    const { context, client } = params;
+    const { context } = params;
+    
+    const lastProcessedBlock = await getLastProcessedBlock(context.dbContext);
     const fromBlock = lastProcessedBlock.blockNumber;
 
     // Query all block change logs since the last processed block
     const query = createEntityQuery(context.schema, 'BlockChangeLog', {
-      first: 1000,
+      first: context.graphqlContext.pagination.maxRowsPerRequest,
       order: {
         by: 'blockNumber',
         direction: 'desc'
@@ -34,7 +34,7 @@ const createStrategy = (lastProcessedBlock: BlockChangeLog): ChangeStrategy => {
 
     const blockChangeLogResults: BlockChangeLog[] = results.get('BlockChangeLog') || [];
 
-    if(blockChangeLogResults.pop()?.id === lastProcessedBlock.id) {
+    if(blockChangeLogResults[0]?.id === lastProcessedBlock.id) {
       return {
         entities: [],
         fromBlock: fromBlock
@@ -59,4 +59,4 @@ const createStrategy = (lastProcessedBlock: BlockChangeLog): ChangeStrategy => {
   };
 };
 
-export const createBlockChangeLogStrategy = (lastProcessedBlock: BlockChangeLog) => createStrategy(lastProcessedBlock); 
+export const createBlockChangeLogStrategy = () => createStrategy(); 

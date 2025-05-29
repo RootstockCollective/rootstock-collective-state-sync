@@ -1,4 +1,4 @@
-import { Entity } from "../config/config";
+import { Entity } from "../config/types";
 
 export type ColumnType = 'Boolean' | 'BigInt' | 'Bytes' | 'String';
 export type ArrayColumnType = [ColumnType];

@@ -1,8 +1,8 @@
 import log from 'loglevel';
 
-import { TheGraph } from '../config/config';
 import { buildBatchQuery } from '../handlers/queryBuilder';
 import { transformEntityName } from '../utils/entityName';
+import { Secrets, TheGraph } from '../config/types';
 
 export interface GraphQLRequest {
     query: string;
@@ -76,8 +76,8 @@ export const executeRequests = async (
 };
 
 // Factory function to create a TheGraph context
-export const createTheGraphContext = ({ endpoint, maxRowsPerRequest }: TheGraph): TheGraphContext => ({
-    endpoint,
+export const createTheGraphContext = ({ url, id, maxRowsPerRequest }: TheGraph, secrets: Secrets): TheGraphContext => ({
+    endpoint: `${url}/${secrets.thegraph.apiKey}/${id}`,
     pagination: {
         maxRowsPerRequest
     }

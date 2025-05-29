@@ -1,5 +1,5 @@
 import { DatabaseSchema } from './types';
-import { Entity } from '../config/config';
+import { Entity } from '../config/types';
 import { DatabaseContext } from '../context/db';
 
 type DatabaseRecord = Record<string, any>;
@@ -41,12 +41,6 @@ const buildUpsertQuery = (tableName: string, columns: string[], placeholders: st
 // Flatten records into values array
 const flattenRecords = (records: DatabaseRecord[], columns: string[]): any[] =>
     records.flatMap(record => columns.map(col => record[col] ?? null));
-
-// Ensure consistent column list across all records
-const normalizeRecords = (records: DatabaseRecord[], columns: string[]): DatabaseRecord[] =>
-    records.map(record =>
-        Object.fromEntries(columns.map(col => [col, record[col] ?? null]))
-    );
 
 // Prepare upsert SQL and values
 const prepareUpsertData = (records: DatabaseRecord[], entity: Entity) => {

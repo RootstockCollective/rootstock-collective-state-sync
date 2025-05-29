@@ -8,7 +8,7 @@ import { DatabaseContext } from '../context/db';
 import { AppContext } from '../context/types';
 
 // Pure function to get the last processed block from the database
-const getLastProcessedBlock = async (
+export const getLastProcessedBlock = async (
   dbContext: DatabaseContext
   ): Promise<BlockChangeLog> => {
   const client = await dbContext.pool.connect();
@@ -18,12 +18,12 @@ const getLastProcessedBlock = async (
     );
     const lastBlock = result.rows[0];
     return lastBlock ? {
-      id: lastBlock.id,
+      id: lastBlock.id.toString(),
       blockNumber: BigInt(lastBlock.blockNumber),
       blockTimestamp: BigInt(lastBlock.blockTimestamp),
       updatedEntities: lastBlock.updatedEntities
     } : {
-      id: '',
+      id: '0x00',
       blockNumber: BigInt(0),
       blockTimestamp: BigInt(0),
       updatedEntities: []
@@ -36,11 +36,9 @@ const getLastProcessedBlock = async (
 const createBlockHandler = async (
   context: AppContext,
   client: PublicClient
-) => {
-  const lastProcessedBlock = await getLastProcessedBlock(context.dbContext);
-  
+) => {  
   const strategies: ChangeStrategy[] = [
-    createBlockChangeLogStrategy(lastProcessedBlock),
+    createBlockChangeLogStrategy(),
   ];
 
   return async (): Promise<EntityChange | null> => {    

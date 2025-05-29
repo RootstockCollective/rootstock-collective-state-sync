@@ -1,26 +1,3 @@
-blockchain:
-  network: "testnet"
-database:
-  schema: "public"
-  host: "localhost"
-  port: 5432
-  user: "test"
-  password: "test"
-  database: "test"
-  batchSize: 1000
-thegraph:
-  - name: CollectiveRewards
-    endpoint: "https://api.studio.thegraph.com/query/106677/rootstockcollective-collective-rewards-local-2/version/latest"
-    maxRowsPerRequest: 1000
-  - name: Proposals
-    endpoint: "https://api.studio.thegraph.com/query/106677/rootstockcollective-collective-rewards-local-2/version/latest"
-    maxRowsPerRequest: 1000
-contracts:
-  - name: BackersManager
-    address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"
-    abis: 
-      - BackersManagerAbi
-      - CycleTimeKeeperAbi
 entities:
   - name: BlockChangeLog
     columns:
@@ -84,6 +61,10 @@ entities:
         type: BigInt
       - name: rewardShares
         type: BigInt
+      - name: backerRewardPercentage
+        type: BackerRewardPercentage
+        references:
+          - builder
       - name: state
         type: BuilderState
         references:
@@ -92,6 +73,20 @@ entities:
         type: [BuilderRewardsClaimed]
         references:
           - builder
+    primaryKeys:
+      - id
+  - name: BackerRewardPercentage
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: previous
+        type: BigInt
+      - name: next
+        type: BigInt
+      - name: cooldownEndTime
+        type: BigInt
     primaryKeys:
       - id
   - name: BuilderState
@@ -114,6 +109,14 @@ entities:
         type: Bytes
     primaryKeys:
       - id
+  - name: GaugeToBuilder
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Bytes
+    primaryKeys:
+      - id
   - name: BuilderRewardsClaimed
     columns:
       - name: id
@@ -126,7 +129,106 @@ entities:
         type: BigInt
     primaryKeys:
         - id
-
+  - name: Backer
+    columns:
+      - name: id
+        type: Bytes
+      - name: isBlacklisted
+        type: Boolean
+      - name: totalAllocation
+        type: BigInt
+      - name: builders
+        type: [BackerToBuilder]
+        references:
+          - backer
+      - name: rewardsClaimed
+        type: [BackersRewardsClaimed]
+        references:
+          - backer
+    primaryKeys:
+      - id
+  - name: BackersRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: backer
+        type: Backer
+    primaryKeys:
+      - id
+  - name: BackerToBuilder
+    columns:
+      - name: id
+        type: Bytes
+      - name: totalAllocation
+        type: BigInt
+      - name: backer
+        type: Backer
+      - name: builder
+        type: Builder
+      - name: builderState
+        type: BuilderState
+      - name: rewardsClaimed
+        type: [BackerToBuilderRewardsClaimed]
+        references:
+          - backerToBuilder
+    primaryKeys:
+      - id
+  - name: BackerToBuilderRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: backerToBuilder
+        type: BackerToBuilder
+    primaryKeys:
+      - id
+  - name: Cycle
+    columns:
+      - name: id
+        type: Bytes
+      - name: totalPotentialReward
+        type: BigInt
+      - name: rewardsERC20
+        type: BigInt
+      - name: rewardsRBTC
+        type: BigInt
+      - name: onDistributionPeriod
+        type: Boolean
+      - name: periodFinish
+        type: BigInt
+      - name: cycleDuration
+        type: BigInt
+      - name: distributionDuration
+        type: BigInt
+    primaryKeys:
+      - id
+  - name: ContractConfig
+    columns:
+      - name: id
+        type: Bytes
+      - name: backersManager
+        type: Bytes
+      - name: builderRegistry
+        type: Bytes
+      - name: rewardDistributor
+        type: Bytes
+      - name: builders
+        type: [Bytes]
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+    primaryKeys:
+      - id
 
 
 

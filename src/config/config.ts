@@ -1,57 +1,13 @@
 import config from 'config';
-import { ColumnType } from "../handlers/types";
-import { SupportedChain } from "./chain";
+import { AppConfig, BlockchainConfig, Contract, Entity, Secrets, TheGraph } from './types';
 
-export interface AppConfig {
-    blockchain: BlockchainConfig;
-    database: DatabaseConfig;
-    thegraph: TheGraph[];
-    contracts: Contract[];
-    entities: Entity[];
-}
-
-export interface BlockchainConfig {
-    network: SupportedChain;
-}
-
-export interface DatabaseConfig {
-    user: string;
-    host: string;
-    password: string;
-    database: string;
-    port: number;
-}
-
-export interface TheGraph {
-    name: string;
-    endpoint: string;
-    maxRowsPerRequest: number;
-}
-
-export interface Contract {
-    name: string;
-    address: string;
-    abis: string[];
-}
-
-export interface Column {
-    name: string;
-    type: ColumnType;
-    references?: string[];
-}
-
-export interface Entity {
-    name: string;
-    columns: Column[];
-    primaryKeys: string[];
-    thegraph: string;
-}
 
 export const getConfig = (): AppConfig => {
+    console.log("🚀 ~ getConfig ~ config:", config)
     const blockchain = config.get<BlockchainConfig>('blockchain');
-    const database = config.get<DatabaseConfig>('database');
-    const thegraph = config.get<TheGraph[]>('thegraph');
+    const thegraph = config.get<TheGraph>('thegraph');
     const contracts = config.get<Contract[]>('contracts');
     const entities = config.get<Entity[]>('entities');
-    return { blockchain, database, thegraph, contracts, entities };
+    const secrets = config.get<Secrets>('secrets');
+    return { blockchain, thegraph, contracts, entities, secrets };
 }; 

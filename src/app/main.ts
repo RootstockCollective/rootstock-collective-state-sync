@@ -1,6 +1,6 @@
 import log from 'loglevel';
 
-import { createDb } from '../handlers/dbCreation';
+import { createDb } from '../handlers/dbCreator';
 import { syncAllEntities, createEntityChangeHandler } from '../handlers/syncOrchestrator';
 import { getConfig } from '../config/config';
 import { watchBlocks } from '../watchers/blockWatcher';
@@ -21,11 +21,10 @@ const main = async () => {
     // Start sync process
     await syncAllEntities(context);
 
-    const client = createClient(config);
-
     // Create entity change handler
     const handleEntityChange = createEntityChangeHandler(context);
 
+    const client = createClient(config);
     // Start watching blocks with the entity change handler
     watchBlocks(context, client, handleEntityChange);
 

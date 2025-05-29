@@ -1,6 +1,5 @@
-import { Column } from '../config/config';
+import { Column, Entity } from '../config/types';
 import { DatabaseSchema, columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
-import { Entity } from '../config/config';
 import { AppContext } from '../context/types';
 
 // Pure function to get referenced entity's id column type
@@ -66,7 +65,7 @@ const generateCreateTables = (schema: DatabaseSchema): string[] =>
 // Pure function to generate foreign key constraint
 const generateForeignKeyConstraint = (column: Column, entity: Entity): string => {
     const foreignKeyColumns = column.references!.map(ref => `${ref}`).join(', ');
-    return `ALTER TABLE "${column.type}" ADD CONSTRAINT "fk_${column.type}" FOREIGN KEY (${foreignKeyColumns}) REFERENCES "${entity.name}"(id);`;
+    return `ALTER TABLE "${column.type}" ADD CONSTRAINT "fk_${column.type}" FOREIGN KEY ("${foreignKeyColumns}") REFERENCES "${entity.name}"(id);`;
 };
 
 // Pure function to generate foreign key queries

@@ -2,7 +2,7 @@ import { AppContext } from './types';
 import { DatabaseSchema } from '../handlers/types';
 import { DatabaseContext } from '../context/db';
 import { TheGraphContext } from '../context/theGraph';
-import { AppConfig } from '../config/config';
+import { AppConfig } from '../config/types';
 
 export const createContext = (
     schema: DatabaseSchema,

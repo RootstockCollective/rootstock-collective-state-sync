@@ -1,4 +1,4 @@
-import { Entity } from '../config/config';
+import { Entity } from '../config/types';
 import { DatabaseSchema } from '../handlers/types';
 
 // Pure function to create schema context from config

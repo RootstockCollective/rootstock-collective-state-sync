@@ -1,12 +1,14 @@
 import { Pool } from 'pg';
-import { DatabaseConfig } from '../config/config';
+import { Secrets } from '../config/types';
 export interface DatabaseContext {
     pool: Pool;
 }
 
 // Factory function to create a database context
-export const createDatabaseContext = (config: DatabaseConfig): DatabaseContext => {
-    const pool = new Pool(config);
+export const createDatabaseContext = (secrets: Secrets): DatabaseContext => {
+    const pool = new Pool({
+        connectionString: secrets.database.connectionString,
+    });
 
     return { pool };
 };

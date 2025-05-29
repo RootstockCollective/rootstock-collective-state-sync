@@ -1,4 +1,4 @@
-import { Entity, Column } from '../config/config';
+import { Entity, Column } from '../config/types';
 import { toCamelCase } from '../utils/stringUtils';
 import { GraphQLRequest } from '../context/theGraph';
 import { DatabaseSchema } from './types';
