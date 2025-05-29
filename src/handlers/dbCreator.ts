@@ -1,9 +1,10 @@
-import { Column, Entity } from '../config/types';
+import { Column } from '../config/types';
 import { DatabaseSchema, columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
 import { AppContext } from '../context/types';
+import { Knex } from 'knex';
 
 // Pure function to get referenced entity's id column type
-const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): string => {
+const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType => {
     const referencedEntity = schema.entities.get(column.type);
     if (!referencedEntity) {
         throw new Error(`Referenced entity ${column.type} not found in schema`);
@@ -14,79 +15,71 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): stri
         throw new Error(`Invalid id column type in referenced entity ${column.type}`);
     }
 
-    return columnTypeMap[idColumn.type as ColumnType];
+    return idColumn.type;
 };
 
-// Pure function to generate column definition
-const generateColumnDefinition = (column: Column, schema: DatabaseSchema): string => {
-    if (column.references) return '';
-
-    if (schema.entities.has(column.type)) {
-        return `"${column.name}" ${getReferencedIdColumnType(schema, column)} NOT NULL`;
+const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
+    switch (type.toLowerCase()) {
+        case 'integer':
+            table.integer(name).notNullable();
+            break;
+        case 'bigint':
+            table.text(name).notNullable();
+            break;
+        case 'text':
+            table.text(name).notNullable();
+            break;
+        case 'boolean':
+            table.boolean(name).notNullable();
+            break;
+        case 'timestamp':
+            table.timestamp(name).notNullable();
+            break;
+        case "bytes":
+            table.binary(name).notNullable();
+            break;
+        default:
+            table.string(name).notNullable();
     }
-
-    if (isArrayColumnType(column.type)) {
-        return `"${column.name}" ${columnTypeMap[column.type[0]]}[] NOT NULL`;
-    }
-
-    if (!isColumnType(column.type)) {
-        throw new Error(`Invalid column type ${column.type} for column ${column.name}`);
-    }
-
-    return `"${column.name}" ${columnTypeMap[column.type]} NOT NULL`;
 };
-
-// Pure function to generate primary key constraint
-const generatePrimaryKey = (primaryKeys: string[]): string =>
-    `PRIMARY KEY (${primaryKeys.map(key => `"${key}"`).join(', ')})`;
-
-// Pure function to generate drop tables query
-const generateDropTables = (schema: DatabaseSchema): string[] => {
-    const tableNames = Array.from(schema.entities.keys())
-        .map(name => `"${name}"`)
-        .join(', ');
-    return [`DROP TABLE IF EXISTS ${tableNames} CASCADE;`];
-};
-
-// Pure function to generate create table query
-const generateCreateTable = (entity: Entity, schema: DatabaseSchema): string => {
-    const columnDefinitions = entity.columns
-        .map(column => generateColumnDefinition(column, schema))
-        .filter(Boolean);
-
-    return `CREATE TABLE IF NOT EXISTS "${entity.name}" (${[...columnDefinitions, generatePrimaryKey(entity.primaryKeys)].join(', ')})`;
-};
-
-// Pure function to generate create tables queries
-const generateCreateTables = (schema: DatabaseSchema): string[] =>
-    Array.from(schema.entities.values())
-        .map(entity => generateCreateTable(entity, schema));
-
-// Pure function to generate foreign key constraint
-const generateForeignKeyConstraint = (column: Column, entity: Entity): string => {
-    const foreignKeyColumns = column.references!.map(ref => `${ref}`).join(', ');
-    return `ALTER TABLE "${column.type}" ADD CONSTRAINT "fk_${column.type}" FOREIGN KEY ("${foreignKeyColumns}") REFERENCES "${entity.name}"(id);`;
-};
-
-// Pure function to generate foreign key queries
-const generateForeignKeys = (schema: DatabaseSchema): string[] =>
-    Array.from(schema.entities.values())
-        .flatMap(entity =>
-            entity.columns
-                .filter(column => column.references)
-                .map(column => generateForeignKeyConstraint(column, entity))
-        );
-
-// Pure function to generate all database queries
-const generateQueries = (schema: DatabaseSchema): string[] => [
-    ...generateDropTables(schema),
-    ...generateCreateTables(schema),
-    ...generateForeignKeys(schema)
-];
 
 // Function to create database
 export const createDb = async (context: AppContext): Promise<void> => {
-    const { dbContext, schema } = context;
-    const queries = generateQueries(schema);
-    await dbContext.pool.query(queries.join(';'));
+    const { schema, dbContext } = context;
+    const { db } = dbContext;
+
+    const keys = Array.from(schema.entities.keys()).reverse();
+
+    // Drop all tables first
+    for (const entityName of keys) {
+        await db.schema.dropTableIfExists(entityName);
+    }
+
+    // Create tables
+    for (const entity of schema.entities.values()) {
+        await db.schema.createTable(entity.name, (table) => {
+            // Add columns
+            for (const column of entity.columns) {
+                if (column.references) continue; // Skip reference columns as they'll be handled by foreign keys
+
+                if (schema.entities.has(column.type)) {
+                    const referencedType = getReferencedIdColumnType(schema, column);
+                    createColumn(table, column.name, referencedType);
+                    table.foreign(column.name)
+                        .references('id')
+                        .inTable(column.type)
+                        .onDelete('CASCADE');
+                }
+                else if (isColumnType(column.type)) {
+                    createColumn(table, column.name, column.type);
+                } else if (isArrayColumnType(column.type)) {
+                    const baseType = column.type[0];
+                    table.specificType(column.name, `${columnTypeMap[baseType]}[]`).notNullable();
+                }
+            }
+
+            // Add primary key
+            table.primary(entity.primaryKeys);
+        });
+    }
 };

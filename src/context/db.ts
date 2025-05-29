@@ -1,14 +1,18 @@
 import { Pool } from 'pg';
 import { Secrets } from '../config/types';
+import knex, { Knex } from 'knex';
 export interface DatabaseContext {
-    pool: Pool;
+    db: Knex;
 }
 
 // Factory function to create a database context
 export const createDatabaseContext = (secrets: Secrets): DatabaseContext => {
-    const pool = new Pool({
-        connectionString: secrets.database.connectionString,
+    const db = knex({
+        client: 'pg',
+        connection: {
+            connectionString: secrets.database.connectionString
+        }
     });
 
-    return { pool };
+    return { db };
 };

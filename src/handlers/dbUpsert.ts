@@ -19,44 +19,7 @@ const filterReferenceFields = (record: DatabaseRecord, columnMap: Map<string, an
     return filtered;
 };
 
-// Generate placeholders like ($1, $2), ($3, $4), ...
-const generatePlaceholders = (recordCount: number, columns: string[]): string =>
-    Array.from({ length: recordCount }, (_, i) =>
-        `(${columns.map((_, j) => `$${i * columns.length + j + 1}`).join(', ')})`
-    ).join(', ');
-
-// Generate "SET col = EXCLUDED.col" for upsert
-const generateUpdateSet = (columns: string[]): string =>
-    columns
-        .filter(col => col !== 'id')
-        .map(col => `"${col}" = EXCLUDED."${col}"`)
-        .join(', ');
-
-// Build the final query
-const buildUpsertQuery = (tableName: string, columns: string[], placeholders: string, updateSet: string): string =>
-    `INSERT INTO "${tableName}" (${columns.map(col => `"${col}"`).join(', ')})
-     VALUES ${placeholders}
-     ON CONFLICT (id) DO UPDATE SET ${updateSet}`;
-
-// Flatten records into values array
-const flattenRecords = (records: DatabaseRecord[], columns: string[]): any[] =>
-    records.flatMap(record => columns.map(col => record[col] ?? null));
-
-// Prepare upsert SQL and values
-const prepareUpsertData = (records: DatabaseRecord[], entity: Entity) => {
-    const columnMap = createColumnMap(entity);
-
-    const filteredRecords = records.map(record => filterReferenceFields(record, columnMap));
-    const columns = entity.columns.filter(col => !col.references).map(col => col.name);
-
-    const placeholders = generatePlaceholders(filteredRecords.length, columns);
-    const updateSet = generateUpdateSet(columns);
-    const query = buildUpsertQuery(entity.name, columns, placeholders, updateSet);
-    const values = flattenRecords(filteredRecords, columns);
-
-    return { query, values };
-};
-
+// Prepare upsert SQL a
 // Main function to execute upsert
 export const executeUpsert = async (
     dbContext: DatabaseContext,
@@ -71,18 +34,11 @@ export const executeUpsert = async (
         throw new Error(`Entity "${tableName}" not found in schema`);
     }
 
-    const { query, values } = prepareUpsertData(records, entity);
+    const { db } = dbContext;
 
-    const client = await dbContext.pool.connect();
-    try {
-        await client.query('BEGIN');
-        await client.query(query, values);
-        await client.query('COMMIT');
-    } catch (error) {
-        await client.query('ROLLBACK');
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(`Failed to upsert records into "${tableName}": ${message}`);
-    } finally {
-        client.release();
-    }
+    const columnMap = createColumnMap(entity);
+
+    const filteredRecords = records.map(record => filterReferenceFields(record, columnMap));
+
+    await db(tableName).insert(filteredRecords).onConflict('id').merge();
 };

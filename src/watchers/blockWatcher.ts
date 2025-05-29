@@ -11,26 +11,21 @@ import { AppContext } from '../context/types';
 export const getLastProcessedBlock = async (
   dbContext: DatabaseContext
   ): Promise<BlockChangeLog> => {
-  const client = await dbContext.pool.connect();
-  try {
-    const result = await client.query(
-      'SELECT id, "blockNumber", "blockTimestamp", "updatedEntities" FROM "BlockChangeLog" ORDER BY "blockNumber" DESC LIMIT 1'
-    );
-    const lastBlock = result.rows[0];
-    return lastBlock ? {
-      id: lastBlock.id.toString(),
-      blockNumber: BigInt(lastBlock.blockNumber),
-      blockTimestamp: BigInt(lastBlock.blockTimestamp),
-      updatedEntities: lastBlock.updatedEntities
-    } : {
+  
+  const { db } = dbContext;
+
+  const result = await db<BlockChangeLog>('BlockChangeLog').orderBy('blockNumber', 'desc').limit(1);
+  if (result.length === 0) {
+    return {
       id: '0x00',
       blockNumber: BigInt(0),
       blockTimestamp: BigInt(0),
       updatedEntities: []
     };
-  } finally {
-    client.release();
   }
+  
+  return result[0];
+    
 };
 
 const createBlockHandler = async (

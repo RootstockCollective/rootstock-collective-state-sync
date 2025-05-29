@@ -16,7 +16,7 @@ const createStrategy = (): ChangeStrategy => {
     const { context } = params;
     
     const lastProcessedBlock = await getLastProcessedBlock(context.dbContext);
-    const fromBlock = lastProcessedBlock.blockNumber;
+    const fromBlock = BigInt(lastProcessedBlock.blockNumber);
 
     // Query all block change logs since the last processed block
     const query = createEntityQuery(context.schema, 'BlockChangeLog', {
@@ -34,7 +34,7 @@ const createStrategy = (): ChangeStrategy => {
 
     const blockChangeLogResults: BlockChangeLog[] = results.get('BlockChangeLog') || [];
 
-    if(blockChangeLogResults[0]?.id === lastProcessedBlock.id) {
+    if(blockChangeLogResults[0]?.id === lastProcessedBlock.id.toString()) {
       return {
         entities: [],
         fromBlock: fromBlock
