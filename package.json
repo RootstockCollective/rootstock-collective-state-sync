@@ -10,7 +10,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@tsconfig/node24": "^24.0.1",
+    "@tsconfig/node22": "^22.0.2",
     "@types/node": "^22.15.3",
     "@types/pg": "^8.11.14",
     "ts-node": "^10.9.2",
@@ -22,7 +22,7 @@
     "js-yaml": "^4.1.0",
     "knex": "^3.1.0",
     "loglevel": "^1.9.2",
-    "pg": "^8.15.6",
+    "pg": "^8.16.0",
     "viem": "^2.28.4"
   }
 }

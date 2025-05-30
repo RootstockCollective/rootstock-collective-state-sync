@@ -1,8 +1,8 @@
 import { Entity, Column } from '../config/types';
-import { toCamelCase } from '../utils/stringUtils';
-import { GraphQLRequest } from '../context/theGraph';
+import { toCamelCase } from '../utils/string';
+import { GraphQLRequest } from '../context/subgraphProvider';
 import { DatabaseSchema } from './types';
-import { transformEntityName } from '../utils/entityName';
+import { pluralizeEntityName } from '../utils/entityName';
 
 interface BatchQueryRequest {
   query: string;
@@ -59,10 +59,6 @@ export const createEntityQueries = (
   entityNames: string[],
   options: QueryOptions = {}
 ): GraphQLRequest[] => {
-  if (entityNames.length === 0) {
-    return [];
-  }
-
   return entityNames.map(entityName => createEntityQuery(schema, entityName, options));
 };
 
@@ -89,7 +85,7 @@ const generateQuery = (
  */
 const buildListQuery = (entity: Entity, schema: DatabaseSchema, options: QueryOptions): string => {
   const fields = buildFieldSelection(entity.columns, schema);
-  const entityName = transformEntityName(entity.name);
+  const entityName = pluralizeEntityName(entity.name);
   const queryName = options.alias ? `${options.alias}: ${entityName}` : entityName;
   
   const queryArgs = buildQueryArguments(options);

@@ -1,7 +1,7 @@
 import log from 'loglevel';
 
-import { executeRequests } from '../context/theGraph';
-import { createEntityQueries } from '../handlers/queryBuilder';
+import { executeRequests } from '../context/subgraphProvider';
+import { createEntityQueries } from './graphQLBuilder';
 import { EntityChange } from '../watchers/strategies/types';
 import { executeUpsert } from '../handlers/dbUpsert';
 import { AppContext } from '../context/types';

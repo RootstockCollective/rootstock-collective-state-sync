@@ -1,6 +1,6 @@
 blockchain:
   network: "testnet"
-thegraph:
+subgraphProvider:
   url: "https://api.studio.thegraph.com/query"
   id: "rootstockcollective-collective-rewards-local-2/version/latest"
   maxRowsPerRequest: 1000

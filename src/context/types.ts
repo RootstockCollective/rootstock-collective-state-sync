@@ -1,11 +1,11 @@
 import { DatabaseSchema } from '../handlers/types';
 import { DatabaseContext } from '../context/db';
-import { TheGraphContext } from '../context/theGraph';
-import { AppConfig } from '../config/config';
+import { GraphQlContext } from './subgraphProvider';
+import { Config } from '../config/config';
 
 export interface AppContext {
     schema: DatabaseSchema;
     dbContext: DatabaseContext;
-    graphqlContext: TheGraphContext;
-    config: AppConfig;
+    graphqlContext: GraphQlContext;
+    config: Config;
 }

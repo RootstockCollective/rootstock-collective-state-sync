@@ -1,18 +1,32 @@
 import { ColumnType } from "../handlers/types";
 import { SupportedChain } from "./chain";
 
-export interface AppConfig {
-    blockchain: BlockchainConfig;
-    thegraph: TheGraph;
+export interface Config {
+    app: App;
+    database: Database;
+    blockchain: Blockchain;
+    subgraphProvider: SubgraphProvider;
     contracts: Contract[];
     entities: Entity[];
     secrets: Secrets;
 }
 
-export interface BlockchainConfig {
+export interface App {
+    restartDb: boolean;
+}
+
+
+export interface Database {
+    batchSize: number;
+    maxRetries: number;
+    initialRetryDelay: number;
+}
+
+export interface Blockchain {
     network: SupportedChain;
 }
-export interface TheGraph {
+
+export interface SubgraphProvider {
     name: string;
     url: string;
     id: string;
@@ -33,12 +47,12 @@ export interface Column {
 export interface Entity {
     name: string;
     columns: Column[];
-    primaryKeys: string[];
+    primaryKey: string[];
     thegraph: string;
 }
 
 export interface Secrets {
-    thegraph: {
+    subgraphProvider: {
         apiKey: string;
     };
     database: {

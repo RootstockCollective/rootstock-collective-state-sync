@@ -45,8 +45,7 @@ const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) 
 
 // Function to create database
 export const createDb = async (context: AppContext): Promise<void> => {
-    const { schema, dbContext } = context;
-    const { db } = dbContext;
+    const { schema, dbContext: { db } } = context;
 
     const keys = Array.from(schema.entities.keys()).reverse();
 
@@ -79,7 +78,7 @@ export const createDb = async (context: AppContext): Promise<void> => {
             }
 
             // Add primary key
-            table.primary(entity.primaryKeys);
+            table.primary(entity.primaryKey);
         });
     }
 };

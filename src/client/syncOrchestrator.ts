@@ -1,5 +1,7 @@
-import { executeRequests } from '../context/theGraph';
-import { createEntityQueries } from '../handlers/queryBuilder';
+import log from 'loglevel';
+
+import { executeRequests } from '../context/subgraphProvider';
+import { createEntityQueries } from '../handlers/graphQLBuilder';
 import { EntityChange } from '../watchers/strategies/types';
 import { executeUpsert } from '../handlers/dbUpsert';
 import { AppContext } from '../context/types';
@@ -60,13 +62,13 @@ const collectEntityData = async (
 
     while (requests.length > 0) {
         const results = await executeRequests(graphqlContext, requests);
-        console.log('Batch results:', Array.from(results.entries()).map(([entity, data]) => `${entity}: ${data.length} records`));
+        log.info('Batch results:', Array.from(results.entries()).map(([entity, data]) => `${entity}: ${data.length} records`));
 
         requests = [];
         for (const [entityName, data] of results) {
             const currentStatus = entityStatus.get(entityName)!;
             const lastId = data.length > 0 ? data[data.length - 1].id : null;
-            console.log(`Entity ${entityName}: Last ID from batch: ${lastId}, Records in batch: ${data.length}`);
+            log.info(`Entity ${entityName}: Last ID from batch: ${lastId}, Records in batch: ${data.length}`);
 
             const newStatus = updateStatus(
                 currentStatus,
@@ -75,7 +77,7 @@ const collectEntityData = async (
                 graphqlContext.pagination.maxRowsPerRequest
             );
             entityStatus.set(entityName, newStatus);
-            console.log(`Entity ${entityName} status:`, {
+            log.info(`Entity ${entityName} status:`, {
                 lastProcessedId: newStatus.lastProcessedId,
                 isComplete: newStatus.isComplete,
                 totalProcessed: newStatus.totalProcessed
@@ -88,7 +90,7 @@ const collectEntityData = async (
                 });
                 requests.push(...nextQueries);
             } else {
-                console.log(`No more queries needed for ${entityName}. Complete: ${newStatus.isComplete}, Last ID: ${newStatus.lastProcessedId}`);
+                log.info(`No more queries needed for ${entityName}. Complete: ${newStatus.isComplete}, Last ID: ${newStatus.lastProcessedId}`);
             }
 
             if (data.length > 0) {
@@ -96,10 +98,10 @@ const collectEntityData = async (
                 entityData.set(entityName, [...existingData, ...data]);
             }
 
-            console.log(`Processed ${newStatus.totalProcessed} records for ${entityName}`);
+            log.info(`Processed ${newStatus.totalProcessed} records for ${entityName}`);
         }
 
-        console.log(`Created ${requests.length} queries for next batch`);
+        log.info(`Created ${requests.length} queries for next batch`);
     }
 
     return entityData;
@@ -110,14 +112,14 @@ const processEntityData = async (
     entityData: Map<string, any[]>
 ): Promise<void> => {
     const { dbContext, schema } = context;
-    console.log('Processing all collected data...');
+    log.info('Processing all collected data...');
     for (const [entityName, data] of entityData) {
         if (data.length > 0) {
-            console.log(`Upserting ${data.length} records for ${entityName}`);
+            log.info(`Upserting ${data.length} records for ${entityName}`);
             await executeUpsert(dbContext, entityName, data, schema);
         }
     }
-    console.log('Completed processing all data');
+    log.info('Completed processing all data');
 };
 
 export const syncEntities = async (
@@ -130,15 +132,15 @@ export const syncEntities = async (
 };
 
 export const syncAllEntities = async (context: AppContext): Promise<void> => {
-    console.log('Starting sync for all entities');
+    log.info('Starting sync for all entities');
     const entities = Array.from(context.schema.entities.keys());
     await syncEntities(context, entities);
-    console.log('Completed sync for all entities');
+    log.info('Completed sync for all entities');
 };
 
 export const createEntityChangeHandler = (context: AppContext) => {
     const handleEntityChange = async (change: EntityChange): Promise<void> => {
-        console.log("🚀 ~ handleEntityChange ~ change:", change);
+        log.info("🚀 ~ handleEntityChange ~ change:", change);
         const { entities, blockNumber } = change;
         const validEntities = entities.filter(entityName => context.schema.entities.has(entityName));
         await syncEntities(context, validEntities, blockNumber);

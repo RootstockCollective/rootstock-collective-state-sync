@@ -1,7 +1,7 @@
 
 import { BlockChangeLog, ChangeStrategy } from './types';
-import { createEntityQuery } from '../../handlers/queryBuilder';
-import { executeRequests } from '../../context/theGraph';
+import { createEntityQuery } from '../../handlers/graphQLBuilder';
+import { executeRequests } from '../../context/subgraphProvider';
 import { AppContext } from '../../context/types';
 import { getLastProcessedBlock } from '../blockWatcher';
 

@@ -1,3 +1,9 @@
+app:
+  restartDb: false
+database:
+  batchSize: 10000
+  maxRetries: 3
+  initialRetryDelay: 1000
 entities:
   - name: BlockChangeLog
     columns:
@@ -9,7 +15,7 @@ entities:
         type: BigInt
       - name: updatedEntities
         type: [String]
-    primaryKeys:
+    primaryKey:
       - id
   - name: BackerStakingHistory
     columns:
@@ -27,7 +33,7 @@ entities:
         type: [GaugeStakingHistory]
         references:
           - backer
-    primaryKeys:
+    primaryKey:
       - id
   - name: GaugeStakingHistory
     columns:
@@ -45,7 +51,7 @@ entities:
         type: BigInt
       - name: lastBlockTimestamp
         type: BigInt
-    primaryKeys:
+    primaryKey:
       - id
   - name: Builder
     columns:
@@ -73,7 +79,7 @@ entities:
         type: [BuilderRewardsClaimed]
         references:
           - builder
-    primaryKeys:
+    primaryKey:
       - id
   - name: BackerRewardPercentage
     columns:
@@ -87,7 +93,7 @@ entities:
         type: BigInt
       - name: cooldownEndTime
         type: BigInt
-    primaryKeys:
+    primaryKey:
       - id
   - name: BuilderState
     columns:
@@ -107,7 +113,7 @@ entities:
         type: Boolean
       - name: pausedReason
         type: Bytes
-    primaryKeys:
+    primaryKey:
       - id
   - name: GaugeToBuilder
     columns:
@@ -115,7 +121,7 @@ entities:
         type: Bytes
       - name: builder
         type: Bytes
-    primaryKeys:
+    primaryKey:
       - id
   - name: BuilderRewardsClaimed
     columns:
@@ -127,7 +133,7 @@ entities:
         type: Bytes
       - name: amount
         type: BigInt
-    primaryKeys:
+    primaryKey:
         - id
   - name: Backer
     columns:
@@ -145,7 +151,7 @@ entities:
         type: [BackersRewardsClaimed]
         references:
           - backer
-    primaryKeys:
+    primaryKey:
       - id
   - name: BackersRewardsClaimed
     columns:
@@ -157,7 +163,7 @@ entities:
         type: BigInt
       - name: backer
         type: Backer
-    primaryKeys:
+    primaryKey:
       - id
   - name: BackerToBuilder
     columns:
@@ -175,7 +181,7 @@ entities:
         type: [BackerToBuilderRewardsClaimed]
         references:
           - backerToBuilder
-    primaryKeys:
+    primaryKey:
       - id
   - name: BackerToBuilderRewardsClaimed
     columns:
@@ -187,7 +193,7 @@ entities:
         type: BigInt
       - name: backerToBuilder
         type: BackerToBuilder
-    primaryKeys:
+    primaryKey:
       - id
   - name: Cycle
     columns:
@@ -207,7 +213,7 @@ entities:
         type: BigInt
       - name: distributionDuration
         type: BigInt
-    primaryKeys:
+    primaryKey:
       - id
   - name: ContractConfig
     columns:
@@ -227,7 +233,7 @@ entities:
         type: BigInt
       - name: blockHash
         type: Bytes
-    primaryKeys:
+    primaryKey:
       - id
 
 

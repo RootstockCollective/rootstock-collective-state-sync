@@ -5,21 +5,23 @@ import { syncAllEntities, createEntityChangeHandler } from '../handlers/syncOrch
 import { getConfig } from '../config/config';
 import { watchBlocks } from '../watchers/blockWatcher';
 import { createClient } from '../client/createClient';
-import { initializeContexts } from '../context/initialize';
+import { createContexts } from '../context/create';
 
 const main = async () => {
   try {
     const config = getConfig();
 
     log.setLevel(log.levels.INFO);
-    
-    const context = initializeContexts(config);
 
-    // Create database schema
-    await createDb(context);
+    const context = createContexts(config);
 
-    // Start sync process
-    await syncAllEntities(context);
+    if (config.app.restartDb) {
+      // Create database schema
+      await createDb(context);
+
+      // Start sync process
+      await syncAllEntities(context);
+    }
 
     // Create entity change handler
     const handleEntityChange = createEntityChangeHandler(context);

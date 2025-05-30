@@ -1,8 +1,8 @@
 import { createPublicClient, http, PublicClient } from 'viem'
 import { CHAINS } from '../config/chain'
-import { AppConfig } from '../config/types'
+import { Config } from '../config/types'
 
-export const createClient = (config: AppConfig): PublicClient => {
+export const createClient = (config: Config): PublicClient => {
   const chain = CHAINS[config.blockchain.network]
   return createPublicClient({
     chain,
