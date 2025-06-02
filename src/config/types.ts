@@ -1,5 +1,6 @@
 import { ColumnType } from "../handlers/types";
 import { SupportedChain } from "./chain";
+import log from "loglevel";
 
 export interface Config {
     app: App;
@@ -13,6 +14,7 @@ export interface Config {
 
 export interface App {
     restartDb: boolean;
+    logLevel: log.LogLevelDesc;
 }
 
 

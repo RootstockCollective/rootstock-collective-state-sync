@@ -1,5 +1,6 @@
 app:
-  restartDb: false
+  restartDb: true
+  logLevel: "error"
 database:
   batchSize: 10000
   maxRetries: 3

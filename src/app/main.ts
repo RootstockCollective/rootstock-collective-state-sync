@@ -11,7 +11,7 @@ const main = async () => {
   try {
     const config = getConfig();
 
-    log.setLevel(log.levels.INFO);
+    log.setLevel(config.app.logLevel);
 
     const context = createContexts(config);
 

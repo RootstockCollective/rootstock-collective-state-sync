@@ -1,15 +1,15 @@
 // abis/index.ts
-import { BackersManagerAbi } from '../../abis/BackersManagerAbi'
-import { BuilderRegistryAbi } from '../../abis/BuilderRegistryAbi'
-import { CycleTimeKeeperAbi } from '../../abis/CycleTimeKeeperAbi'
-import { GaugeAbi } from '../../abis/GaugeAbi'
-import { RewardDistributorAbi } from '../../abis/RewardDistributorAbi'
+import { BackersManagerAbi } from '../abis/BackersManagerAbi'
+import { BuilderRegistryAbi } from '../abis/BuilderRegistryAbi'
+import { CycleTimeKeeperAbi } from '../abis/CycleTimeKeeperAbi'
+import { GaugeAbi } from '../abis/GaugeAbi'
+import { RewardDistributorAbi } from '../abis/RewardDistributorAbi'
 
-export * from '../../abis/BackersManagerAbi'
-export * from '../../abis/BuilderRegistryAbi'
-export * from '../../abis/CycleTimeKeeperAbi'
-export * from '../../abis/GaugeAbi'
-export * from '../../abis/RewardDistributorAbi'
+export * from '../abis/BackersManagerAbi'
+export * from '../abis/BuilderRegistryAbi'
+export * from '../abis/CycleTimeKeeperAbi'
+export * from '../abis/GaugeAbi'
+export * from '../abis/RewardDistributorAbi'
 
 export const abis = {
   BackersManagerAbi,
