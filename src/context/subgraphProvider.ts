@@ -4,30 +4,30 @@ import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
 import { pluralizeEntityName } from '../utils/entityName';
 import { Secrets, SubgraphProvider } from '../config/types';
 
-export interface GraphQLRequest {
+interface GraphQLRequest {
     query: string;
     entityName: string;
 }
 
-export interface GraphQLResponse<T> {
+interface GraphQLResponse<T> {
     data: {
         [key: string]: T[];
-    };
+    }
     errors?: Array<{
         message: string;
         locations: Array<{ line: number; column: number }>;
     }>;
 }
 
-export interface GraphQlContext {
+interface GraphQlContext {
     endpoint: string;
     pagination: {
         maxRowsPerRequest: number;
-    };
+    }
 }
 
 // Function to execute a batch of requests
-export const executeRequests = async (
+const executeRequests = async (
     context: GraphQlContext,
     requests: GraphQLRequest[]
 ): Promise<Map<string, any[]>> => {
@@ -80,12 +80,15 @@ export const executeRequests = async (
         log.error('Error executing GraphQL requests:', error);
         return new Map<string, any[]>(); // Return empty map instead of throwing
     }
-};
+}
 
 // Factory function to create a TheGraph context
-export const createTheGraphContext = ({ url, id, maxRowsPerRequest }: SubgraphProvider, secrets: Secrets): GraphQlContext => ({
+const createTheGraphContext = ({ url, id, maxRowsPerRequest }: SubgraphProvider, secrets: Secrets): GraphQlContext => ({
     endpoint: `${url}/${secrets.subgraphProvider.apiKey}/${id}`,
     pagination: {
         maxRowsPerRequest
     }
 });
+
+export { createTheGraphContext, executeRequests }
+export type { GraphQLRequest, GraphQLResponse, GraphQlContext }

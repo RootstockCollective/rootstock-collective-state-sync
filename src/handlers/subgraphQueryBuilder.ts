@@ -1,7 +1,7 @@
 import { Entity, Column } from '../config/types';
 import { toCamelCase } from '../utils/string';
 import { GraphQLRequest } from '../context/subgraphProvider';
-import { DatabaseSchema } from './types';
+import { DatabaseSchema } from '../context/schema';
 import { pluralizeEntityName } from '../utils/entityName';
 
 interface BatchQueryRequest {
@@ -12,7 +12,7 @@ interface BatchQueryRequest {
 /**
  * Combines multiple GraphQL queries into a single batch query
  */
-export const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
+const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
   if (requests.length === 0) {
     throw new Error('Cannot build batch query with empty requests array');
   }
@@ -25,7 +25,7 @@ export const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
   return `query BatchQuery {
     ${queryParts.join('\n    ')}
   }`;
-};
+}
 
 
 interface QueryOptions {
@@ -34,7 +34,7 @@ interface QueryOptions {
   order?: {
     by: string;
     direction: 'asc' | 'desc';
-  };
+  }
   filters?: Record<string, any>;
   alias?: string;
 }
@@ -42,25 +42,25 @@ interface QueryOptions {
 /**
  * Creates a GraphQL request object for a single entity
  */
-export const createEntityQuery = (
+const createEntityQuery = (
   schema: DatabaseSchema,
   entityName: string,
   options: QueryOptions = {}
 ): GraphQLRequest => {
   const query = generateQuery(schema, entityName, options);
-  return { entityName, query };
-};
+  return { entityName, query }
+}
 
 /**
  * Creates multiple GraphQL request objects for multiple entities with the same options
  */
-export const createEntityQueries = (
+const createEntityQueries = (
   schema: DatabaseSchema,
   entityNames: string[],
   options: QueryOptions = {}
 ): GraphQLRequest[] => {
   return entityNames.map(entityName => createEntityQuery(schema, entityName, options));
-};
+}
 
 /**
  * Generates a GraphQL query for a specific entity with given options
@@ -78,7 +78,7 @@ const generateQuery = (
   return options.id 
     ? buildSingleQuery(entity, schema, options.id, options)
     : buildListQuery(entity, schema, options);
-};
+}
 
 /**
  * Builds a GraphQL query for fetching multiple entities (list query)
@@ -94,7 +94,7 @@ const buildListQuery = (entity: Entity, schema: DatabaseSchema, options: QueryOp
   return `${queryName}${argsString} {
       ${fields}
     }`;
-};
+}
 
 /**
  * Builds a GraphQL query for fetching a single entity by ID
@@ -107,7 +107,7 @@ const buildSingleQuery = (entity: Entity, schema: DatabaseSchema, id: string, op
   return `${queryName}(id: "${id}") {
       ${fields}
     }`;
-};
+}
 
 /**
  * Builds the field selection for a GraphQL query based on entity columns
@@ -122,7 +122,7 @@ const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string 
       return column.name;
     })
     .join('\n      ');
-};
+}
 
 /**
  * Formats a value for GraphQL query arguments
@@ -137,7 +137,7 @@ const formatQueryValue = (value: any): string => {
     return `{ ${entries} }`;
   }
   return String(value);
-};
+}
 
 /**
  * Builds query arguments array for GraphQL queries
@@ -165,4 +165,6 @@ const buildQueryArguments = (options: QueryOptions): string[] => {
   }
 
   return queryArgs;
-};
+}
+
+export { createEntityQuery, createEntityQueries, buildBatchQuery }

@@ -19,7 +19,7 @@ const createInitialStatus = (entityName: string): EntitySyncStatus => ({
     lastProcessedId: null,
     isComplete: false,
     totalProcessed: 0
-});
+})
 
 const updateStatus = (
     currentStatus: EntitySyncStatus,
@@ -33,8 +33,8 @@ const updateStatus = (
         lastProcessedId: lastId,
         isComplete,
         totalProcessed: currentStatus.totalProcessed + processedCount
-    };
-};
+    }
+}
 
 const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint) => ({
     ...(lastProcessedId ? { id_gt: lastProcessedId } : { id_gt: '0x00' }),
@@ -103,7 +103,7 @@ const collectEntityData = async (
     }
 
     return entityData;
-};
+}
 
 const processEntityData = async (
     context: AppContext,
@@ -118,13 +118,15 @@ const processEntityData = async (
         }
     }
     log.info('Completed processing all data');
-};
+}
 
-export const syncEntities = async (
+const syncEntities = async (
     context: AppContext,
     entities: string[],
     blockNumber?: bigint
 ): Promise<void> => {
     const entityData = await collectEntityData(context, entities, blockNumber);
     await processEntityData(context, entityData);
-};
+}
+
+export { syncEntities }

@@ -1,6 +1,6 @@
-import { DatabaseSchema } from './types';
 import { Entity } from '../config/types';
 import { DatabaseContext } from '../context/db';
+import { DatabaseSchema } from '../context/schema';
 
 type DatabaseRecord = Record<string, any>;
 
@@ -10,20 +10,20 @@ const createColumnMap = (entity: Entity): Map<string, (typeof entity.columns)[nu
 
 // Filter and normalize reference fields
 const filterReferenceFields = (record: DatabaseRecord, columnMap: Map<string, any>): DatabaseRecord => {
-    const filtered: DatabaseRecord = {};
+    const filtered: DatabaseRecord = {}
     for (const [key, value] of Object.entries(record)) {
         const column = columnMap.get(key);
         if (!column) continue;
         filtered[key] = (value && typeof value === 'object' && 'id' in value) ? value.id : value;
     }
     return filtered;
-};
+}
 
 // Helper function to wait
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Main function to execute upsert
-export const executeUpsert = async (
+const executeUpsert = async (
     dbContext: DatabaseContext,
     tableName: string,
     records: DatabaseRecord[],
@@ -73,4 +73,6 @@ export const executeUpsert = async (
             throw new Error(`Failed to upsert batch after ${maxRetries} retries. Last error: ${lastError?.message}`);
         }
     }
-};
+}
+
+export { executeUpsert }

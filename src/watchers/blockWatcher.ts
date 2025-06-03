@@ -39,10 +39,10 @@ const createBlockHandlerWithStrategies = async (
     if (totalProcessed > 0) {
       log.info(`Processed changes from ${totalProcessed} strategies`);
     }
-  };
-};
+  }
+}
 
-export const watchBlocks = async (
+const watchBlocks = async (
   context: AppContext,
 ) => {
 
@@ -59,3 +59,5 @@ export const watchBlocks = async (
     pollingInterval: 1000,
   });
 }
+
+export { watchBlocks }

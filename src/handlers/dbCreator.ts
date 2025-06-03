@@ -1,8 +1,9 @@
+import log from 'loglevel';
 import { Column, Entity } from '../config/types';
-import { DatabaseSchema, columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
+import { columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
 import { AppContext } from '../context/types';
 import { Knex } from 'knex';
-import log from 'loglevel';
+import { DatabaseSchema } from '../context/schema';
 
 // Pure function to get referenced entity's id column type
 const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType => {
@@ -17,7 +18,7 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): Colu
     }
 
     return idColumn.type;
-};
+}
 
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
     switch (type.toLowerCase()) {
@@ -42,7 +43,7 @@ const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) 
         default:
             table.string(name).notNullable();
     }
-};
+}
 
 // Helper function to create a single table
 const createTable = async (db: Knex, entity: Entity, schema: DatabaseSchema): Promise<void> => {
@@ -74,7 +75,7 @@ const createTable = async (db: Knex, entity: Entity, schema: DatabaseSchema): Pr
     });
 
     log.info(`Created table: ${entity.name}`);
-};
+}
 
 // Function to create database
 export const createDb = async (context: AppContext, initializeDb: boolean): Promise<string[]> => {
@@ -118,7 +119,7 @@ export const createDb = async (context: AppContext, initializeDb: boolean): Prom
     }
 
     return entities;
-};
+}
 
 // Helper function to get existing table names from the database
 const getExistingTables = async (db: Knex): Promise<string[]> => {
@@ -128,4 +129,4 @@ const getExistingTables = async (db: Knex): Promise<string[]> => {
         .andWhere('table_type', 'BASE TABLE');
 
     return result.map((row) => row.table_name);
-};
+}

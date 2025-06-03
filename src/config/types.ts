@@ -2,7 +2,7 @@ import { ColumnType } from "../handlers/types";
 import { SupportedChain } from "./chain";
 import log from "loglevel";
 
-export interface Config {
+interface Config {
     app: App;
     database: Database;
     blockchain: Blockchain;
@@ -12,51 +12,53 @@ export interface Config {
     secrets: Secrets;
 }
 
-export interface App {
+interface App {
     initializeDb: boolean;
     logLevel: log.LogLevelDesc;
 }
 
 
-export interface Database {
+interface Database {
     batchSize: number;
     maxRetries: number;
     initialRetryDelay: number;
 }
 
-export interface Blockchain {
+interface Blockchain {
     network: SupportedChain;
 }
 
-export interface SubgraphProvider {
+interface SubgraphProvider {
     name: string;
     url: string;
     id: string;
     maxRowsPerRequest: number;
 }
 
-export interface Contract {
+interface Contract {
     name: string;
     address: string;
 }
 
-export interface Column {
+interface Column {
     name: string;
     type: ColumnType;
 }
 
-export interface Entity {
+interface Entity {
     name: string;
     columns: Column[];
     primaryKey: string[];
     thegraph: string;
 }
 
-export interface Secrets {
+interface Secrets {
     subgraphProvider: {
         apiKey: string;
-    };
+    }
     database: {
         connectionString: string;
-    };
+    }
 }
+
+export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity, Secrets }

@@ -11,12 +11,15 @@ const rskRegtest = defineChain({
       http: ["http://localhost:4444"],
     },
   },
-});
+})
 
-export const CHAINS = {
+const CHAINS = {
   mainnet: rootstock,
   testnet: rootstockTestnet,
   regtest: rskRegtest,
 } as const
 
-export type SupportedChain = keyof typeof CHAINS;
+type SupportedChain = keyof typeof CHAINS;
+
+export { CHAINS }
+export type { SupportedChain }

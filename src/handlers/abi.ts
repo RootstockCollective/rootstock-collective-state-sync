@@ -11,7 +11,7 @@ export * from '../abis/CycleTimeKeeperAbi'
 export * from '../abis/GaugeAbi'
 export * from '../abis/RewardDistributorAbi'
 
-export const abis = {
+const abis = {
   BackersManagerAbi,
   BuilderRegistryAbi,
   CycleTimeKeeperAbi,
@@ -20,9 +20,12 @@ export const abis = {
 } as const
 
 // 💡 Type derived from keys of the constant
-export type CollectiveRewardsAbiName = keyof typeof abis
+type CollectiveRewardsAbiName = keyof typeof abis
 
 // 💡 Value is a readonly ABI (inferred as 'readonly ...[]')
-export type CollectiveRewardsAbi = typeof abis[CollectiveRewardsAbiName]
+type CollectiveRewardsAbi = typeof abis[CollectiveRewardsAbiName]
 
-export const getAbi = (abiName: CollectiveRewardsAbiName): CollectiveRewardsAbi => abis[abiName]
+const getAbi = (abiName: CollectiveRewardsAbiName): CollectiveRewardsAbi => abis[abiName]
+
+export { getAbi }
+export type { CollectiveRewardsAbiName, CollectiveRewardsAbi }

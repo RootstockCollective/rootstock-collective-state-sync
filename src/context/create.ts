@@ -5,9 +5,11 @@ import { createTheGraphContext } from "./subgraphProvider";
 import { AppContext } from "./types";
 
 
-export const createContexts = (config: Config): AppContext => ({
+const createContexts = (config: Config): AppContext => ({
     schema: createSchemaContext(config.entities),
     dbContext: createDatabaseContext(config.database, config.secrets),
     graphqlContext: createTheGraphContext(config.subgraphProvider, config.secrets),
     config
 });
+
+export { createContexts }

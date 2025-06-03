@@ -2,19 +2,21 @@ import { PublicClient } from 'viem';
 import { AppContext } from '../../context/types';
 
 
-export type ChangeStrategyParams = {
+interface ChangeStrategyParams {
   context: AppContext;
   client: PublicClient;
 }
 
-export interface ChangeStrategy {
+interface ChangeStrategy {
   name: string;
   detectAndProcess: (params: ChangeStrategyParams) => Promise<boolean>;
 }
 
-export interface BlockChangeLog {
+interface BlockChangeLog {
   id: string;
   blockNumber: bigint;
   blockTimestamp: bigint;
   updatedEntities: string[];
 }
+
+export type { ChangeStrategyParams, ChangeStrategy, BlockChangeLog }

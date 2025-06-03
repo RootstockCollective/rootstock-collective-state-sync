@@ -21,11 +21,11 @@ const getLastProcessedBlock = async (
       blockNumber: BigInt(0),
       blockTimestamp: BigInt(0),
       updatedEntities: []
-    };
+    }
   }
 
   return result[0];
-};
+}
 
 const createStrategy = (): ChangeStrategy => {
 
@@ -83,14 +83,14 @@ const createStrategy = (): ChangeStrategy => {
     }
 
     return false;
-  };
+  }
 
   const strategy = {
     name: 'BlockChangeLog',
     detectAndProcess
-  };
+  }
 
   return strategy;
-};
+}
 
 export const createBlockChangeLogStrategy = () => createStrategy(); 

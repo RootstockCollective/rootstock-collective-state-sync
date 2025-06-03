@@ -8,9 +8,11 @@ import { toCamelCase } from "./string";
  * pluralizeEntityName('BlockChangeLog') // 'blockChangeLogs'
  * pluralizeEntityName('Entity') // 'entities'
  */
-export const pluralizeEntityName = (name: string): string => {
+const pluralizeEntityName = (name: string): string => {
 
     return name.endsWith('y') 
         ? toCamelCase(name.slice(0, -1)) + 'ies'
         : toCamelCase(name) + 's';
-}; 
+} 
+
+export { pluralizeEntityName }
