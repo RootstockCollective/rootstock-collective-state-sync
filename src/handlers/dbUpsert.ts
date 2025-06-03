@@ -13,7 +13,7 @@ const filterReferenceFields = (record: DatabaseRecord, columnMap: Map<string, an
     const filtered: DatabaseRecord = {};
     for (const [key, value] of Object.entries(record)) {
         const column = columnMap.get(key);
-        if (!column || column.references) continue;
+        if (!column) continue;
         filtered[key] = (value && typeof value === 'object' && 'id' in value) ? value.id : value;
     }
     return filtered;

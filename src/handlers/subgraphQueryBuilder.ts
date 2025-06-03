@@ -111,11 +111,9 @@ const buildSingleQuery = (entity: Entity, schema: DatabaseSchema, id: string, op
 
 /**
  * Builds the field selection for a GraphQL query based on entity columns
- * Filters out reference columns and handles foreign key relationships
  */
 const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string => {
   return columns
-    .filter(column => !column.references)
     .map(column => {
       // For foreign key relationships, only select the id field
       if (schema.entities.has(column.type)) {

@@ -13,7 +13,7 @@ export interface Config {
 }
 
 export interface App {
-    restartDb: boolean;
+    initializeDb: boolean;
     logLevel: log.LogLevelDesc;
 }
 
@@ -43,7 +43,6 @@ export interface Contract {
 export interface Column {
     name: string;
     type: ColumnType;
-    references?: string[];
 }
 
 export interface Entity {

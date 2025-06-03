@@ -1,9 +1,8 @@
 import log from 'loglevel';
 
 import { executeRequests } from '../context/subgraphProvider';
-import { createEntityQueries } from '../handlers/graphQLBuilder';
-import { EntityChange } from '../watchers/strategies/types';
-import { executeUpsert } from '../handlers/dbUpsert';
+import { createEntityQueries } from './subgraphQueryBuilder';
+import { executeUpsert } from './dbUpsert';
 import { AppContext } from '../context/types';
 
 
@@ -62,7 +61,6 @@ const collectEntityData = async (
 
     while (requests.length > 0) {
         const results = await executeRequests(graphqlContext, requests);
-        log.info('Batch results:', Array.from(results.entries()).map(([entity, data]) => `${entity}: ${data.length} records`));
 
         requests = [];
         for (const [entityName, data] of results) {
@@ -130,20 +128,3 @@ export const syncEntities = async (
     const entityData = await collectEntityData(context, entities, blockNumber);
     await processEntityData(context, entityData);
 };
-
-export const syncAllEntities = async (context: AppContext): Promise<void> => {
-    log.info('Starting sync for all entities');
-    const entities = Array.from(context.schema.entities.keys());
-    await syncEntities(context, entities);
-    log.info('Completed sync for all entities');
-};
-
-export const createEntityChangeHandler = (context: AppContext) => {
-    const handleEntityChange = async (change: EntityChange): Promise<void> => {
-        log.info("🚀 ~ handleEntityChange ~ change:", change);
-        const { entities, blockNumber } = change;
-        const validEntities = entities.filter(entityName => context.schema.entities.has(entityName));
-        await syncEntities(context, validEntities, blockNumber);
-    };
-    return handleEntityChange;
-}; 

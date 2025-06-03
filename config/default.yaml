@@ -1,6 +1,6 @@
 app:
-  restartDb: true
-  logLevel: "error"
+  initializeDb: true
+  logLevel: "info"
 database:
   batchSize: 10000
   maxRetries: 3
@@ -30,10 +30,6 @@ entities:
         type: BigInt
       - name: lastBlockTimestamp
         type: BigInt
-      - name: gauges
-        type: [GaugeStakingHistory]
-        references:
-          - backer
     primaryKey:
       - id
   - name: GaugeStakingHistory
@@ -68,18 +64,6 @@ entities:
         type: BigInt
       - name: rewardShares
         type: BigInt
-      - name: backerRewardPercentage
-        type: BackerRewardPercentage
-        references:
-          - builder
-      - name: state
-        type: BuilderState
-        references:
-          - builder 
-      - name: rewardsClaimed
-        type: [BuilderRewardsClaimed]
-        references:
-          - builder
     primaryKey:
       - id
   - name: BackerRewardPercentage
@@ -144,14 +128,6 @@ entities:
         type: Boolean
       - name: totalAllocation
         type: BigInt
-      - name: builders
-        type: [BackerToBuilder]
-        references:
-          - backer
-      - name: rewardsClaimed
-        type: [BackersRewardsClaimed]
-        references:
-          - backer
     primaryKey:
       - id
   - name: BackersRewardsClaimed
@@ -178,10 +154,6 @@ entities:
         type: Builder
       - name: builderState
         type: BuilderState
-      - name: rewardsClaimed
-        type: [BackerToBuilderRewardsClaimed]
-        references:
-          - backerToBuilder
     primaryKey:
       - id
   - name: BackerToBuilderRewardsClaimed

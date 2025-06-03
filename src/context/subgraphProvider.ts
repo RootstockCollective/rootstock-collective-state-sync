@@ -1,6 +1,6 @@
 import log from 'loglevel';
 
-import { buildBatchQuery } from '../handlers/graphQLBuilder';
+import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
 import { pluralizeEntityName } from '../utils/entityName';
 import { Secrets, SubgraphProvider } from '../config/types';
 
