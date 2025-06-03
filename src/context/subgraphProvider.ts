@@ -2,7 +2,7 @@ import log from 'loglevel';
 
 import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
 import { pluralizeEntityName } from '../utils/entityName';
-import { Secrets, SubgraphProvider } from '../config/types';
+import { SubgraphProvider } from '../config/types';
 
 interface GraphQLRequest {
     query: string;
@@ -83,8 +83,8 @@ const executeRequests = async (
 }
 
 // Factory function to create a TheGraph context
-const createTheGraphContext = ({ url, id, maxRowsPerRequest }: SubgraphProvider, secrets: Secrets): GraphQlContext => ({
-    endpoint: `${url}/${secrets.subgraphProvider.apiKey}/${id}`,
+const createTheGraphContext = ({ url, id, maxRowsPerRequest, apiKey }: SubgraphProvider): GraphQlContext => ({
+    endpoint: `${url}/${apiKey}/${id}`,
     pagination: {
         maxRowsPerRequest
     }

@@ -9,7 +9,6 @@ interface Config {
     subgraphProvider: SubgraphProvider;
     contracts: Contract[];
     entities: Entity[];
-    secrets: Secrets;
 }
 
 interface App {
@@ -22,6 +21,7 @@ interface Database {
     batchSize: number;
     maxRetries: number;
     initialRetryDelay: number;
+    connectionString: string;
 }
 
 interface Blockchain {
@@ -33,6 +33,7 @@ interface SubgraphProvider {
     url: string;
     id: string;
     maxRowsPerRequest: number;
+    apiKey: string;
 }
 
 interface Contract {
@@ -52,13 +53,4 @@ interface Entity {
     thegraph: string;
 }
 
-interface Secrets {
-    subgraphProvider: {
-        apiKey: string;
-    }
-    database: {
-        connectionString: string;
-    }
-}
-
-export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity, Secrets }
+export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity }

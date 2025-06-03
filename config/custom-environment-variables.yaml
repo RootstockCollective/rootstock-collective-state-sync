@@ -1,5 +1,4 @@
-secrets:
-  subgraphProvider:
-    apiKey: "THE_GRAPH_API_KEY" 
-  database:
-    connectionString: "DATABASE_CONNECTION_STRING"
+subgraphProvider:
+  apiKey: "THE_GRAPH_API_KEY" 
+database:
+  connectionString: "DATABASE_CONNECTION_STRING"

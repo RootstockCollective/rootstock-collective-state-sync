@@ -7,8 +7,8 @@ import { AppContext } from "./types";
 
 const createContexts = (config: Config): AppContext => ({
     schema: createSchemaContext(config.entities),
-    dbContext: createDatabaseContext(config.database, config.secrets),
-    graphqlContext: createTheGraphContext(config.subgraphProvider, config.secrets),
+    dbContext: createDatabaseContext(config.database),
+    graphqlContext: createTheGraphContext(config.subgraphProvider),
     config
 });
 

@@ -1,5 +1,5 @@
 import config from 'config';
-import { App, Blockchain, Config, Contract, Database, Entity, Secrets, SubgraphProvider } from './types';
+import { App, Blockchain, Config, Contract, Database, Entity, SubgraphProvider } from './types';
 
 const getConfig = (): Config => {
     const app = config.get<App>('app');
@@ -8,8 +8,7 @@ const getConfig = (): Config => {
     const subgraphProvider = config.get<SubgraphProvider>('subgraphProvider');
     const contracts = config.get<Contract[]>('contracts');
     const entities = config.get<Entity[]>('entities');
-    const secrets = config.get<Secrets>('secrets');
-    return { app, database, blockchain, subgraphProvider, contracts, entities, secrets }
+    return { app, database, blockchain, subgraphProvider, contracts, entities }
 }
 
 export { getConfig }
