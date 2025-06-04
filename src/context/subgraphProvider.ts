@@ -1,8 +1,9 @@
 import log from 'loglevel';
 
 import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
-import { pluralizeEntityName } from '../utils/entityName';
+import { pluralizeEntityName } from '../utils/pluralizeEntityName';
 import { SubgraphProvider } from '../config/types';
+import { EntityDataCollection, EntityRecord } from '../handlers/types';
 
 interface GraphQLRequest {
     query: string;
@@ -30,14 +31,14 @@ interface GraphQlContext {
 const executeRequests = async (
     context: GraphQlContext,
     requests: GraphQLRequest[]
-): Promise<Map<string, any[]>> => {
+): Promise<EntityDataCollection> => {
 
     try {
-
         const batchQuery = buildBatchQuery(
             requests.map((req, index) => ({ query: req.query, index }))
         );
-        log.info("🚀 ~ batchQuery:", batchQuery);
+        log.debug("🚀 ~ batchQuery:", batchQuery);
+
 
         const response = await fetch(context.endpoint, {
             method: 'POST',
@@ -53,14 +54,17 @@ const executeRequests = async (
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const result = await response.json() as GraphQLResponse<any>;
+        // The graph always requires an id field
+        // The id field is a string or bytes and is the primary key of the entity
+        // See https://thegraph.com/docs/en/subgraphs/developing/creating/ql-schema/#optional-and-required-fields
+        const result = await response.json() as GraphQLResponse<EntityRecord>;
 
         if (result.errors) {
             log.error('GraphQL query that caused error:', batchQuery);
             throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
         }
 
-        const results = new Map<string, any[]>();
+        const results: EntityDataCollection = {};
         for (let i = 0; i < requests.length; i++) {
             const request = requests[i];
             const entityName = pluralizeEntityName(request.entityName);
@@ -72,13 +76,14 @@ const executeRequests = async (
                 firstId: data[0]?.id,
                 lastId: data[data.length - 1]?.id
             });
-            results.set(request.entityName, data);
+            results[request.entityName] = data;
         }
 
         return results;
     } catch (error) {
         log.error('Error executing GraphQL requests:', error);
-        return new Map<string, any[]>(); // Return empty map instead of throwing
+        // We should not throw an error here, because in the next block emitted we can get all the data from the previous blocks
+        return {};
     }
 }
 

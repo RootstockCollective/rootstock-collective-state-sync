@@ -4,7 +4,7 @@ import { executeRequests } from '../context/subgraphProvider';
 import { createEntityQueries } from './subgraphQueryBuilder';
 import { executeUpsert } from './dbUpsert';
 import { AppContext } from '../context/types';
-
+import { EntityDataCollection } from './types';
 
 interface EntitySyncStatus {
     entityName: string;
@@ -45,14 +45,14 @@ const collectEntityData = async (
     context: AppContext,
     entities: string[],
     blockNumber?: bigint
-): Promise<Map<string, any[]>> => {
+): Promise<EntityDataCollection> => {
     const { schema, graphqlContext } = context;
-    const entityStatus = new Map<string, EntitySyncStatus>();
-    entities.forEach(entityName => {
-        entityStatus.set(entityName, createInitialStatus(entityName));
-    });
+    const entityStatus: Record<string, EntitySyncStatus> = entities.reduce((acc, entityName) => {
+        acc[entityName] = createInitialStatus(entityName);
+        return acc;
+    }, {} as Record<string, EntitySyncStatus>);
 
-    const entityData = new Map<string, any[]>();
+    const entityData: EntityDataCollection = {};
 
     let requests = createEntityQueries(schema, entities, {
         first: graphqlContext.pagination.maxRowsPerRequest,
@@ -63,18 +63,18 @@ const collectEntityData = async (
         const results = await executeRequests(graphqlContext, requests);
 
         requests = [];
-        for (const [entityName, data] of results) {
-            const currentStatus = entityStatus.get(entityName)!;
+        for (const [entityName, data] of Object.entries(results)) {
+            const currentStatus = entityStatus[entityName]!;
             const lastId = data.length > 0 ? data[data.length - 1].id : null;
             log.info(`Entity ${entityName}: Last ID from batch: ${lastId}, Records in batch: ${data.length}`);
 
             const newStatus = updateStatus(
                 currentStatus,
-                lastId,
+                lastId as string | null,
                 data.length,
                 graphqlContext.pagination.maxRowsPerRequest
             );
-            entityStatus.set(entityName, newStatus);
+            entityStatus[entityName] = newStatus;
             log.info(`Entity ${entityName} status:`, {
                 lastProcessedId: newStatus.lastProcessedId,
                 isComplete: newStatus.isComplete,
@@ -92,8 +92,8 @@ const collectEntityData = async (
             }
 
             if (data.length > 0) {
-                const existingData = entityData.get(entityName) || [];
-                entityData.set(entityName, [...existingData, ...data]);
+                const existingData = entityData[entityName] || [];
+                entityData[entityName] = [...existingData, ...data];
             }
 
             log.info(`Processed ${newStatus.totalProcessed} records for ${entityName}`);
@@ -107,11 +107,11 @@ const collectEntityData = async (
 
 const processEntityData = async (
     context: AppContext,
-    entityData: Map<string, any[]>
+    entityData: EntityDataCollection
 ): Promise<void> => {
     const { dbContext, schema } = context;
     log.info('Processing all collected data...');
-    for (const [entityName, data] of entityData) {
+    for (const [entityName, data] of Object.entries(entityData)) {
         if (data.length > 0) {
             log.info(`Upserting ${data.length} records for ${entityName}`);
             await executeUpsert(dbContext, entityName, data, schema);

@@ -1,31 +1,55 @@
-import { Entity } from '../config/types';
+import { Column, Entity } from '../config/types';
 import { DatabaseContext } from '../context/db';
 import { DatabaseSchema } from '../context/schema';
 
 type DatabaseRecord = Record<string, any>;
 
-// Optimized: Create a column lookup map
-const createColumnMap = (entity: Entity): Map<string, (typeof entity.columns)[number]> =>
-    new Map(entity.columns.map(col => [col.name, col]));
+const createColumnMap = (entity: Entity): Record<string, Column> =>
+    entity.columns.reduce((acc, col) => {
+        acc[col.name] = col;
+        return acc;
+    }, {} as Record<string, Column>);
 
-// Filter and normalize reference fields
-const filterReferenceFields = (record: DatabaseRecord, columnMap: Map<string, any>): DatabaseRecord => {
+const filterReferenceFields = (record: DatabaseRecord, columnMap: Record<string, Column>): DatabaseRecord => {
     const filtered: DatabaseRecord = {}
     for (const [key, value] of Object.entries(record)) {
-        const column = columnMap.get(key);
+        const column = columnMap[key];
         if (!column) continue;
         filtered[key] = (value && typeof value === 'object' && 'id' in value) ? value.id : value;
     }
     return filtered;
 }
 
-// Helper function to wait
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Main function to execute upsert
+const withRetry = async <T>(
+    fn: () => Promise<T>,
+    maxRetries: number,
+    initialRetryDelay: number
+): Promise<T> => {
+    let retryCount = 0;
+    let lastError: Error | null = null;
+
+    while (retryCount <= maxRetries) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error as Error;
+            retryCount++;
+            
+            if (retryCount <= maxRetries) {
+                const delay = initialRetryDelay * Math.pow(2, retryCount - 1);
+                await wait(delay);
+            }
+        }
+    }
+
+    throw new Error(`Operation failed after ${maxRetries} retries. Last error: ${lastError?.message}`);
+};
+
 const executeUpsert = async (
     dbContext: DatabaseContext,
-    tableName: string,
+    tableName: string, 
     records: DatabaseRecord[],
     schema: DatabaseSchema
 ): Promise<void> => {
@@ -39,16 +63,12 @@ const executeUpsert = async (
     const { db, batchSize, maxRetries, initialRetryDelay } = dbContext;
     const columnMap = createColumnMap(entity);
 
-    // Process records in batches
     for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
         const filteredBatch = batch.map(record => filterReferenceFields(record, columnMap));
-        
-        let retryCount = 0;
-        let lastError: Error | null = null;
 
-        while (retryCount <= maxRetries) {
-            try {
+        await withRetry(
+            async () => {
                 // Note: For PostgreSQL, upsert is handled via onConflict() and merge() methods
                 // rather than upsert() which is only supported in SQLite and MySQL
                 // See: https://knexjs.org/guide/query-builder.html#upsert
@@ -57,21 +77,10 @@ const executeUpsert = async (
                     .insert(filteredBatch)
                     .onConflict(entity.primaryKey)
                     .merge();
-                break; // Success, exit retry loop
-            } catch (error) {
-                lastError = error as Error;
-                retryCount++;
-                
-                if (retryCount <= maxRetries) {
-                    const delay = initialRetryDelay * Math.pow(2, retryCount - 1);
-                    await wait(delay);
-                }
-            }
-        }
-
-        if (retryCount > maxRetries) {
-            throw new Error(`Failed to upsert batch after ${maxRetries} retries. Last error: ${lastError?.message}`);
-        }
+            },
+            maxRetries,
+            initialRetryDelay
+        );
     }
 }
 

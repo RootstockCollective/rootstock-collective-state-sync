@@ -1,6 +1,7 @@
 app:
   initializeDb: true
   logLevel: "info"
+  productionMode: false
 database:
   batchSize: 10000
   maxRetries: 3

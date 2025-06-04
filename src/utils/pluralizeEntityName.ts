@@ -1,4 +1,4 @@
-import { toCamelCase } from "./string";
+import { toCamelCase } from "./toCamelCase";
 
 /**
  * Transforms an entity name to its plural form in camelCase

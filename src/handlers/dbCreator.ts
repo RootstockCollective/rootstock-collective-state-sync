@@ -1,62 +1,48 @@
 import log from 'loglevel';
-import { Column, Entity } from '../config/types';
+import { App, Column, Entity } from '../config/types';
 import { columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
 import { AppContext } from '../context/types';
 import { Knex } from 'knex';
 import { DatabaseSchema } from '../context/schema';
 
-// Pure function to get referenced entity's id column type
-const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType => {
+const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType[] => {
     const referencedEntity = schema.entities.get(column.type);
     if (!referencedEntity) {
         throw new Error(`Referenced entity ${column.type} not found in schema`);
     }
 
-    const idColumn = referencedEntity.columns.find((col: Column) => col.name === 'id');
-    if (!idColumn || !isColumnType(idColumn.type)) {
+    const idColumns = referencedEntity.primaryKey.map(key => referencedEntity.columns.find(col => col.name === key));
+    if (!idColumns || !idColumns.every(col => col && isColumnType(col.type))) {
         throw new Error(`Invalid id column type in referenced entity ${column.type}`);
     }
 
-    return idColumn.type;
+    return idColumns.map(col => col!.type);
 }
+
+const columnTypeHandlers: Record<ColumnType, (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder> = {
+    BigInt: (table, name) => table.text(name).notNullable(),
+    Bytes: (table, name) => table.binary(name).notNullable(),
+    String: (table, name) => table.text(name).notNullable(),
+    Boolean: (table, name) => table.boolean(name).notNullable(),
+};
 
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
-    switch (type.toLowerCase()) {
-        case 'integer':
-            table.integer(name).notNullable();
-            break;
-        case 'bigint':
-            table.text(name).notNullable();
-            break;
-        case 'text':
-            table.text(name).notNullable();
-            break;
-        case 'boolean':
-            table.boolean(name).notNullable();
-            break;
-        case 'timestamp':
-            table.timestamp(name).notNullable();
-            break;
-        case "bytes":
-            table.binary(name).notNullable();
-            break;
-        default:
-            table.string(name).notNullable();
-    }
+    const handler = columnTypeHandlers[type];
+    handler(table, name);
 }
 
-// Helper function to create a single table
-const createTable = async (db: Knex, entity: Entity, schema: DatabaseSchema): Promise<void> => {
-    await db.schema.createTable(entity.name, (table) => {
-        // Add columns
+const createTable = async (trx: Knex.Transaction, entity: Entity, schema: DatabaseSchema): Promise<void> => {
+    await trx.schema.createTable(entity.name, (table) => {
         for (const column of entity.columns) {
             if (schema.entities.has(column.type)) {
                 const referencedType = getReferencedIdColumnType(schema, column);
-                createColumn(table, column.name, referencedType);
-                table.foreign(column.name)
-                    .references('id')
-                    .inTable(column.type)
-                    .onDelete('CASCADE');
+                for (const type of referencedType) {
+                    createColumn(table, column.name, type);
+                    table.foreign(column.name)
+                        .references('id')
+                        .inTable(column.type)
+                        .onDelete('CASCADE');
+                }
             }
             else if (isColumnType(column.type)) {
                 createColumn(table, column.name, column.type);
@@ -77,51 +63,57 @@ const createTable = async (db: Knex, entity: Entity, schema: DatabaseSchema): Pr
     log.info(`Created table: ${entity.name}`);
 }
 
-// Function to create database
-export const createDb = async (context: AppContext, initializeDb: boolean): Promise<string[]> => {
+const createDb = async (context: AppContext, appConfig: App): Promise<string[]> => {
     const { schema, dbContext: { db } } = context;
+
+    const { productionMode, initializeDb } = appConfig;
 
     const schemaEntities = Array.from(schema.entities.keys());
     let entities: string[];
 
-    if (initializeDb) {
-        // Initialize mode: Drop and recreate all tables
-        log.info('Initializing database: dropping and recreating all tables');
+    return await db.transaction(async (trx) => {
+        if (initializeDb) {
+            if (productionMode) {
+                throw new Error('Cannot initialize database in production mode. Set `initializeDb: false` in app config.');
+            }
 
-        const entityNames = [...schemaEntities].reverse();
+            // Initialize mode: Drop and recreate all tables
+            log.info('Initializing database: dropping and recreating all tables');
 
-        // Drop all tables first
-        for (const entityName of entityNames) {
-            await db.schema.dropTableIfExists(entityName);
+            const entityNames = [...schemaEntities].reverse();
+
+            // Drop all tables first
+            for (const entityName of entityNames) {
+                await trx.schema.dropTableIfExists(entityName);
+            }
+
+            entities = schemaEntities;
+        } else {
+            log.info('Checking for new tables to create');
+
+            const existingTables = await getExistingTables(trx);
+            entities = schemaEntities.filter(entityName => !existingTables.includes(entityName));
         }
 
-        entities = schemaEntities;
-    } else {
-        log.info('Checking for new tables to create');
-
-        const existingTables = await getExistingTables(db);
-        entities = schemaEntities.filter(entityName => !existingTables.includes(entityName));
-    }
-
-    if (entities.length === 0) {
-        log.info('No new tables to create');
-        return [];
-    }
-
-    log.info(`Creating ${entities.length} tables: ${entities.join(', ')}`);
-
-    // Create tables
-    for (const entityName of entities) {
-        const entity = schema.entities.get(entityName);
-        if (entity) {
-            await createTable(db, entity, schema);
+        if (entities.length === 0) {
+            log.info('No new tables to create');
+            return [];
         }
-    }
 
-    return entities;
+        log.info(`Creating ${entities.length} tables: ${entities.join(', ')}`);
+
+        // Create tables
+        for (const entityName of entities) {
+            const entity = schema.entities.get(entityName);
+            if (entity) {
+                await createTable(trx, entity, schema);
+            }
+        }
+
+        return entities;
+    });
 }
 
-// Helper function to get existing table names from the database
 const getExistingTables = async (db: Knex): Promise<string[]> => {
     const result = await db<{ table_name: string }>('information_schema.tables')
         .select('table_name')
@@ -130,3 +122,5 @@ const getExistingTables = async (db: Knex): Promise<string[]> => {
 
     return result.map((row) => row.table_name);
 }
+
+export { createDb }

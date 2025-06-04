@@ -6,7 +6,7 @@ subgraphProvider:
   maxRowsPerRequest: 1000
   apiKey: 106677
 database:
-  connectionString: "postgresql://test:test@localhost:5432/test"
+  connectionString: "postgresql://test:test@localhost:5432/test" #for docker-compose use postgresql://test:test@postgres:5432/test
 contracts:
   - name: BackersManager
     address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"

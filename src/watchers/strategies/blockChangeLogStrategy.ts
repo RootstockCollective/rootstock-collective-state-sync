@@ -51,7 +51,7 @@ const createStrategy = (): ChangeStrategy => {
     });
 
     const results = await executeRequests(context.graphqlContext, [query]);
-    const blockChangeLogResults: BlockChangeLog[] = results.get('BlockChangeLog') || [];
+    const blockChangeLogResults = results['BlockChangeLog'] as BlockChangeLog[] || [];
 
     if(blockChangeLogResults[0]?.id === lastProcessedBlock.id.toString()) {
       log.info(`${strategy.name}: No new changes since last processed block`);

@@ -18,5 +18,8 @@ const isArrayColumnType = (type: string | string[]): type is ArrayColumnType => 
         ["String", "Boolean", "BigInt", "Bytes"].includes(type[0]);
 }
 
-export type { ColumnType, ArrayColumnType }
+type EntityRecord = unknown & { id: string };
+type EntityDataCollection = Record<string, EntityRecord[]>;
+
+export type { ColumnType, ArrayColumnType, EntityDataCollection, EntityRecord }
 export { columnTypeMap, isColumnType, isArrayColumnType }

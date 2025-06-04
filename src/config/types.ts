@@ -14,6 +14,7 @@ interface Config {
 interface App {
     initializeDb: boolean;
     logLevel: log.LogLevelDesc;
+    productionMode: boolean;
 }
 
 

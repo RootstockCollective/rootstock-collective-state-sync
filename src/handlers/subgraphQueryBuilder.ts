@@ -1,8 +1,8 @@
 import { Entity, Column } from '../config/types';
-import { toCamelCase } from '../utils/string';
+import { toCamelCase } from '../utils/toCamelCase';
 import { GraphQLRequest } from '../context/subgraphProvider';
 import { DatabaseSchema } from '../context/schema';
-import { pluralizeEntityName } from '../utils/entityName';
+import { pluralizeEntityName } from '../utils/pluralizeEntityName';
 
 interface BatchQueryRequest {
   query: string;
@@ -30,7 +30,6 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
 
 interface QueryOptions {
   first?: number;
-  id?: string;
   order?: {
     by: string;
     direction: 'asc' | 'desc';
@@ -75,9 +74,7 @@ const generateQuery = (
     throw new Error(`Entity '${entityName}' not found in schema`);
   }
 
-  return options.id 
-    ? buildSingleQuery(entity, schema, options.id, options)
-    : buildListQuery(entity, schema, options);
+  return buildListQuery(entity, schema, options);
 }
 
 /**
@@ -92,19 +89,6 @@ const buildListQuery = (entity: Entity, schema: DatabaseSchema, options: QueryOp
   const argsString = queryArgs.length > 0 ? `(${queryArgs.join(', ')})` : '';
   
   return `${queryName}${argsString} {
-      ${fields}
-    }`;
-}
-
-/**
- * Builds a GraphQL query for fetching a single entity by ID
- */
-const buildSingleQuery = (entity: Entity, schema: DatabaseSchema, id: string, options: QueryOptions = {}): string => {
-  const fields = buildFieldSelection(entity.columns, schema);
-  const entityName = toCamelCase(entity.name);
-  const queryName = options.alias ? `${options.alias}: ${entityName}` : entityName;
-  
-  return `${queryName}(id: "${id}") {
       ${fields}
     }`;
 }

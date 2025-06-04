@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:17
     environment:
       - POSTGRES_DB=test
       - POSTGRES_USER=test
@@ -20,9 +20,9 @@ services:
     ports:
       - 3000:3000
     environment:
-      - NODE_ENV=cr.qa
-      - DATABASE_CONNECTION_STRING=postgresql://test:test@postgres:5432/test
-      - THE_GRAPH_API_KEY=106677  
+      - NODE_ENV=$NODE_ENV
+      - DATABASE_CONNECTION_STRING=$DATABASE_CONNECTION_STRING
+      - THE_GRAPH_API_KEY=$THE_GRAPH_API_KEY
     depends_on:
       postgres:
         condition: service_healthy

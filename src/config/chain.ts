@@ -1,4 +1,3 @@
-// chains.ts
 import { defineChain } from "viem";
 import { rootstock, rootstockTestnet } from "viem/chains";
 
