@@ -3,7 +3,6 @@ blockchain:
 subgraphProvider:
   url: "https://api.studio.thegraph.com/query"
   id: "rootstockcollective-collective-rewards-local-2/version/latest"
-  maxRowsPerRequest: 1000
   apiKey: 106677
 database:
   connectionString: "postgresql://test:test@localhost:5432/test" #for docker-compose use postgresql://test:test@postgres:5432/test

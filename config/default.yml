@@ -6,6 +6,9 @@ database:
   batchSize: 10000
   maxRetries: 3
   initialRetryDelay: 1000
+subgraphProvider:
+  url: "https://gateway.thegraph.com/api"
+  maxRowsPerRequest: 1000
 entities:
   - name: BlockChangeLog
     columns:
