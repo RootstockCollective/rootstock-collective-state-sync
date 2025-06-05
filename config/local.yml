@@ -4,8 +4,6 @@ subgraphProvider:
   url: "https://api.studio.thegraph.com/query"
   id: "rootstockcollective-collective-rewards-local-2/version/latest"
   apiKey: 106677
-database:
-  connectionString: "postgresql://test:test@localhost:5432/test" #for docker-compose use postgresql://test:test@postgres:5432/test
 contracts:
   - name: BackersManager
     address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"

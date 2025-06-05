@@ -13,8 +13,8 @@ const createDatabaseContext = (database: Database): DatabaseContext => {
     const db = knex({
         client: 'pg',
         connection: {
-            connectionString
-        }
+            connectionString,
+        },
     });
 
     return { db, ...rest }

@@ -28,6 +28,10 @@ const columnTypeHandlers: Record<ColumnType, (table: Knex.TableBuilder, name: st
 
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
     const handler = columnTypeHandlers[type];
+    if (!handler) {
+        log.error(`Invalid column type: ${type}`);
+        throw new Error(`Invalid column type: ${type}`);
+    }
     handler(table, name);
 }
 

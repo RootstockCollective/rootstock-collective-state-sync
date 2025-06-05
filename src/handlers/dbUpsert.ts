@@ -2,7 +2,7 @@ import { Column, Entity } from '../config/types';
 import { DatabaseContext } from '../context/db';
 import { DatabaseSchema } from '../context/schema';
 
-type DatabaseRecord = Record<string, any>;
+type DatabaseRecord = Record<string, unknown>;
 
 const createColumnMap = (entity: Entity): Record<string, Column> =>
     entity.columns.reduce((acc, col) => {
