@@ -1,0 +1,13 @@
+blockchain:
+  network: "testnet"
+subgraphProvider:
+  url: "https://api.studio.thegraph.com/query"
+  id: "rootstockcollective-collective-rewards-local-2/version/latest"
+  apiKey: 106677
+contracts:
+  - name: BackersManager
+    address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"
+  - name: BuilderRegistry
+    address: "0xDf1ED223f6EC3cC5e57ed5BeaE8031d6BD37516d"
+  - name: RewardDistributor
+    address: "0xa7CC0f00Ec08F8F4D02Ca8f32aE78b05628c5D69"

@@ -1,0 +1,214 @@
+app:
+  initializeDb: true
+  logLevel: "info"
+  productionMode: false
+database:
+  batchSize: 10000
+  maxRetries: 3
+  initialRetryDelay: 1000
+subgraphProvider:
+  url: "https://gateway.thegraph.com/api"
+  maxRowsPerRequest: 1000
+entities:
+  - name: BlockChangeLog
+    columns:
+      - name: id
+        type: Bytes
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: updatedEntities
+        type: [String]
+    primaryKey:
+      - id
+  - name: BackerStakingHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: backerTotalAllocation
+        type: BigInt
+      - name: accumulatedTime
+        type: BigInt
+      - name: lastBlockNumber
+        type: BigInt
+      - name: lastBlockTimestamp
+        type: BigInt
+    primaryKey:
+      - id
+  - name: GaugeStakingHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: gauge
+        type: Bytes
+      - name: backer
+        type: BackerStakingHistory
+      - name: allocation
+        type: BigInt
+      - name: accumulatedAllocationsTime
+        type: BigInt
+      - name: lastBlockNumber
+        type: BigInt
+      - name: lastBlockTimestamp
+        type: BigInt
+    primaryKey:
+      - id
+  - name: Builder
+    columns:
+      - name: id
+        type: Bytes
+      - name: gauge
+        type: Bytes
+      - name: rewardReceiver
+        type: Bytes
+      - name: isHalted
+        type: Boolean
+      - name: totalAllocation
+        type: BigInt
+      - name: rewardShares
+        type: BigInt
+    primaryKey:
+      - id
+  - name: BackerRewardPercentage
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: previous
+        type: BigInt
+      - name: next
+        type: BigInt
+      - name: cooldownEndTime
+        type: BigInt
+    primaryKey:
+      - id
+  - name: BuilderState
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: initialized
+        type: Boolean
+      - name: kycApproved
+        type: Boolean
+      - name: communityApproved
+        type: Boolean
+      - name: kycPaused
+        type: Boolean
+      - name: selfPaused
+        type: Boolean
+      - name: pausedReason
+        type: Bytes
+    primaryKey:
+      - id
+  - name: GaugeToBuilder
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Bytes
+    primaryKey:
+      - id
+  - name: BuilderRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: builder
+        type: Builder
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+    primaryKey:
+        - id
+  - name: Backer
+    columns:
+      - name: id
+        type: Bytes
+      - name: isBlacklisted
+        type: Boolean
+      - name: totalAllocation
+        type: BigInt
+    primaryKey:
+      - id
+  - name: BackersRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: backer
+        type: Backer
+    primaryKey:
+      - id
+  - name: BackerToBuilder
+    columns:
+      - name: id
+        type: Bytes
+      - name: totalAllocation
+        type: BigInt
+      - name: backer
+        type: Backer
+      - name: builder
+        type: Builder
+      - name: builderState
+        type: BuilderState
+    primaryKey:
+      - id
+  - name: BackerToBuilderRewardsClaimed
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: backerToBuilder
+        type: BackerToBuilder
+    primaryKey:
+      - id
+  - name: Cycle
+    columns:
+      - name: id
+        type: Bytes
+      - name: totalPotentialReward
+        type: BigInt
+      - name: rewardsERC20
+        type: BigInt
+      - name: rewardsRBTC
+        type: BigInt
+      - name: onDistributionPeriod
+        type: Boolean
+      - name: periodFinish
+        type: BigInt
+      - name: cycleDuration
+        type: BigInt
+      - name: distributionDuration
+        type: BigInt
+    primaryKey:
+      - id
+  - name: ContractConfig
+    columns:
+      - name: id
+        type: Bytes
+      - name: backersManager
+        type: Bytes
+      - name: builderRegistry
+        type: Bytes
+      - name: rewardDistributor
+        type: Bytes
+      - name: builders
+        type: [Bytes]
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+    primaryKey:
+      - id
