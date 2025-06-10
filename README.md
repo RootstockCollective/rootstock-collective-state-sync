@@ -18,7 +18,7 @@ A state synchronization engine for the [Rootstock Collective](https://www.rootst
 Before running this service, ensure you have:
 
 - **Node.js** v22 or higher
-- **PostgreSQL** database (v12 or higher recommended)
+- **PostgreSQL** database (v12 or higher recommended) or **Docker** (if you want to run it in a Docker container)
 - **Access to a Rootstock node** (mainnet or testnet or regtest)
 - **The Graph API key** (for subgraph queries)
 
