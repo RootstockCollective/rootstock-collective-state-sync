@@ -235,13 +235,6 @@ app:
    node dist/app/main.js
    ```
 
-### Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-
-```
 
 ## 🔗 Related Projects
 
