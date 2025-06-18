@@ -16,13 +16,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Build Docker image
+        run: |
+          docker build -t rootstock-collective-state-sync-app:latest .
+      
       - name: Run state sync
         run: |
           docker run --rm \
-            --platform linux/amd64 \
             -e DATABASE_CONNECTION_STRING="${{ secrets.DATABASE_CONNECTION_STRING }}" \
             -e THE_GRAPH_API_KEY="${{ secrets.THE_GRAPH_API_KEY }}" \
             -e NODE_ENV=cr.qa \
-            franciscotobar/rootstock-collective-state-sync-app:0.0.1
+            rootstock-collective-state-sync-app:latest
         env:
           NODE_ENV: cr.qa
