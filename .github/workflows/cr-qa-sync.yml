@@ -1,0 +1,26 @@
+name: CR QA State Sync
+
+on:
+  schedule:
+    - cron: '* * * * *'  # Run every minute
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: CR-QA
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run state sync
+        run: |
+          docker run --rm \
+            -e DATABASE_CONNECTION_STRING="${{ secrets.DATABASE_CONNECTION_STRING }}" \
+            -e THE_GRAPH_API_KEY="${{ secrets.THE_GRAPH_API_KEY }}" \
+            -e NODE_ENV=cr.qa \
+            franciscotobar/rootstock-collective-state-sync-app:0.0.1
+        env:
+          NODE_ENV: cr.qa
