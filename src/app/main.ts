@@ -9,7 +9,6 @@ import { createContexts } from '../context/create';
 const main = async () => {
   try {
     const config = getConfig();
-    console.log("🚀 ~ main ~ config:", config)
 
     const { logLevel } = config.app;
 
