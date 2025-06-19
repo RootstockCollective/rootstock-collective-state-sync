@@ -16,6 +16,10 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/config ./config/
 
+# Download AWS RDS CA certificate
+RUN apk add --no-cache wget && \
+    wget -O rds-ca-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
 RUN npm install --omit=dev
 
 CMD ["node", "dist/app/main.js"]
