@@ -18,4 +18,6 @@ COPY --from=builder /app/config ./config/
 
 RUN npm install --omit=dev
 
+EXPOSE 3000
+
 CMD ["node", "dist/app/main.js"]
