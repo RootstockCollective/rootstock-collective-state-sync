@@ -1,9 +1,10 @@
 name: Deploy to Amazon ECS (CR QA)
-# Deploys to: https://qa.cr.rootstockcollective.xyz
-# Triggers when a branch is merged into develop
-# Uses the `.env.cr.qa` env file
 
-on: push
+on:
+  push:
+    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
+  pull_request:
+    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
 
 # Declare default permissions as read only.
 permissions: read-all
