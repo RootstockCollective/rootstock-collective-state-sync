@@ -1,8 +1,6 @@
 name: Deploy to Amazon ECS (CR QA)
 
 on:
-  push:
-    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
   pull_request:
     branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
 
@@ -27,8 +25,6 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' || github.event.label.name == 'deploy to CR QA'
     environment:
       name: CR-QA
 
