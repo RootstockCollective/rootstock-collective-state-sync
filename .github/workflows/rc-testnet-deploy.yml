@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECS (CR QA)
+name: Deploy to Amazon ECS (ReleaseCandidate Testnet)
 
 on:
   pull_request:
@@ -10,23 +10,23 @@ permissions: read-all
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: rscoll-state-sync
-  ECS_SERVICE: rscoll-state-sync-cr-qa
+  ECS_SERVICE: rscoll-state-sync-rc-testnet
   ECS_CLUSTER: rscoll-state-sync
-  ECS_TASK_DEFINITION: rscoll-state-sync-cr-qa
-  CONTAINER_NAME: rscoll-state-sync-cr-qa
+  ECS_TASK_DEFINITION: rscoll-state-sync-rc-testnet
+  CONTAINER_NAME: rscoll-state-sync-rc-testnet
 
   # The .env file that is used to build the docker image 
   # is retrieved using PROFILE, so be sure there is a `.env.<PROFILE>` file
   # that matches with the profile set
   # Example: PROFILE=testnet => .env.testnet
-  PROFILE: cr.qa
+  PROFILE: release-candidate-testnet
 
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     environment:
-      name: CR-QA
+      name: release-candidate-testnet
 
     permissions:
       id-token: write
@@ -55,7 +55,7 @@ jobs:
           # Build a docker container and
           # push it to ECR so that it can
           # be deployed to ECS.
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg PROFILE="$PROFILE" --build-arg NEXT_PUBLIC_BUILD_ID=${{ github.sha }} --build-arg THE_GRAPH_API_KEY=${{ secrets.THE_GRAPH_API_KEY }} --no-cache .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg PROFILE="$PROFILE" --build-arg NEXT_PUBLIC_BUILD_ID=${{ github.sha }} --no-cache .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
