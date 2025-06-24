@@ -9,11 +9,11 @@ permissions: read-all
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: state-sync
-  ECS_SERVICE: state-sync-cr-qa
-  ECS_CLUSTER: state-sync
-  ECS_TASK_DEFINITION: state-sync-cr-qa
-  CONTAINER_NAME: state-sync-cr-qa
+  ECR_REPOSITORY: rscoll-state-sync
+  ECS_SERVICE: rscoll-state-sync-cr-qa
+  ECS_CLUSTER: rscoll-state-sync
+  ECS_TASK_DEFINITION: rscoll-state-sync-cr-qa
+  CONTAINER_NAME: rscoll-state-sync-cr-qa
 
   # The .env file that is used to build the docker image 
   # is retrieved using PROFILE, so be sure there is a `.env.<PROFILE>` file
