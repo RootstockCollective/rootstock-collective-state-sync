@@ -1,8 +1,9 @@
 name: Deploy to Amazon ECS (Mainnet)
 
 on:
-  pull_request:
-    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
+  release:
+    types: [released]
+  workflow_dispatch: 
 
 # Declare default permissions as read only.
 permissions: read-all

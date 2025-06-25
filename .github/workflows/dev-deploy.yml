@@ -2,7 +2,7 @@ name: Deploy to Amazon ECS (DEV)
 
 on:
   pull_request:
-    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
+    branches: [ "main" ]
 
 # Declare default permissions as read only.
 permissions: read-all

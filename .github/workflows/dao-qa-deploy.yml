@@ -1,8 +1,9 @@
 name: Deploy to Amazon ECS (DAO QA)
 
 on:
+  workflow_dispatch: # Manually triggered from GitHub Actions tab
   pull_request:
-    branches: [ "main", "DEVOPS-2248/cronjob-sync" ]
+    types: [labeled] # Triggered by a label in a PR
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -19,6 +20,8 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' || github.event.label.name == 'deploy to DAO QA'
     environment:
       name: DAO-QA
 
