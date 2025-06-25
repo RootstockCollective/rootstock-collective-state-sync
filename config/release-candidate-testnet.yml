@@ -1,7 +1,7 @@
 blockchain:
   network: "testnet"
 subgraphProvider:
-  id: "deployments/id/QmfDmnL6FuQruJp2fP7MvZv8ZYQKZAxnPUJrsBmKNM32nY"
+  id: "deployments/id/QmfDmnL6FuQruJp2fP7MvZv8ZYQKZAxnPUJrsBmKNM32nY" # TODO: update this once the subgraph is deployed
 contracts:
   - name: BackersManager
     address: "0x7c2D9C109919B50b9B00Ae173a0398b5EabEE17A"
