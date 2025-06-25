@@ -17,8 +17,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - 3000:3000
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_CONNECTION_STRING=${DATABASE_CONNECTION_STRING:-postgresql://${POSTGRES_USER:-test}:${POSTGRES_PASSWORD:-test}@postgres:5432/${POSTGRES_DB:-test}}
