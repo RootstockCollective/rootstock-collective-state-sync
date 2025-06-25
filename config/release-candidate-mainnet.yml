@@ -1,0 +1,11 @@
+blockchain:
+  network: "mainnet"
+subgraphProvider:
+  id: "deployments/id/QmctVAZ7RuoMfKeDQnXkBdhRTrW8iEtndzTgxbvCGqVQ4p" # TODO: update this once the subgraph is deployed
+contracts:
+  - name: BackersManager
+    address: "0x7995C48D987941291d8008695A4133E557a11530"
+  - name: BuilderRegistry
+    address: "0x8cb62c58AC3D1253c6467537FDDc563857eD76cb"
+  - name: RewardDistributor
+    address: "0x5603Ba40257e317e45BA13C3732819Af5E81a9A1"

@@ -1,0 +1,11 @@
+blockchain:
+  network: "testnet"
+subgraphProvider:
+  id: "deployments/id/QmVzMTL2iP9e1WUph2kaH17epZvp952bphJqHkffe3mwbk
+contracts:
+  - name: BackersManager
+    address: "0x70AC0FE4F8BCA42Aa7e713E1EDA2E8166d0f8Ed8"
+  - name: BuilderRegistry
+    address: "0xad125E6D5C3B84329fa2466A8A6955F67906F4b2"
+  - name: RewardDistributor
+    address: "0x35EB7d3e0907BCB838fbA3b08C4c65DB5431169f"

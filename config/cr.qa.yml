@@ -1,7 +1,7 @@
 blockchain:
   network: "testnet"
 subgraphProvider:
-  id: "deployments/id/QmQXLoLKUmXhGb8x87yAZx3cfNsnosapxQyGfP7nKbKXkK"
+  id: "deployments/id/QmbW4VTVMkmZdQtLxXnmANG2359SYGeePFnfALDnYbncuS"
 contracts:
   - name: BackersManager
     address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"

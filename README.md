@@ -49,14 +49,14 @@ DATABASE_CONNECTION_STRING=postgresql://username:password@localhost:5432/databas
 THE_GRAPH_API_KEY=your_graph_api_key_here
 
 # Optional: Set environment
-NODE_ENV=local
+NODE_ENV=testnet.local
 ```
 
 ### 4. Configure the Service
 
 Choose or create a configuration file in the `./config` directory. Available configurations:
 
-- `local.yml` - Local development
+- `testnet.local.yml` - Local development
 - `dao.qa.yaml` - DAO QA environment
 - `cr.qa.yaml` - CR QA environment
 - `release-candidate.yaml` - Release candidate environment
@@ -65,7 +65,7 @@ Choose or create a configuration file in the `./config` directory. Available con
 To use a specific configuration, set the `NODE_ENV` environment variable:
 
 ```bash
-export NODE_ENV=local  # or dao.qa, cr.qa, release-candidate, mainnet
+export NODE_ENV=testnet.local  # or dao.qa, cr.qa, release-candidate, mainnet
 ```
 
 ## 🐳 Docker Setup (Recommended)
@@ -85,7 +85,7 @@ docker-compose logs -f app
 Create a `.env` file for Docker Compose:
 
 ```bash
-NODE_ENV=local
+NODE_ENV=testnet.local
 DATABASE_CONNECTION_STRING=postgresql://test:test@postgres:5432/test
 THE_GRAPH_API_KEY=your_api_key_here
 ```
