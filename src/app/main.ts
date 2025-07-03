@@ -10,7 +10,7 @@ const main = async () => {
   try {
     const config = getConfig();
 
-    const { logLevel } = config.app;
+    const { logLevel, productionMode } = config.app;
 
     log.setLevel(logLevel);
 
@@ -22,8 +22,11 @@ const main = async () => {
     // Initial sync of entities
     await syncEntities(context, entities);
 
-    watchBlocks(context);
+    if (!productionMode) {
+      process.exit(0);
+    }
 
+    watchBlocks(context);
   } catch (error) {
     log.error('Error in main process:', error);
     process.exit(1);
