@@ -23,6 +23,7 @@ interface Database {
     maxRetries: number;
     initialRetryDelay: number;
     connectionString: string;
+    ssl: boolean;
 }
 
 interface Blockchain {

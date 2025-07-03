@@ -1,3 +1,7 @@
+app:
+  productionMode: false
+database:
+  ssl: false
 blockchain:
   network: "testnet"
 subgraphProvider:

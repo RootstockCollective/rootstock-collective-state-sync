@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - NODE_ENV=${NODE_ENV:-testnet.local}
       - DATABASE_CONNECTION_STRING=${DATABASE_CONNECTION_STRING:-postgresql://${POSTGRES_USER:-test}:${POSTGRES_PASSWORD:-test}@postgres:5432/${POSTGRES_DB:-test}}
       - THE_GRAPH_API_KEY=${THE_GRAPH_API_KEY:-106677}
     depends_on:
