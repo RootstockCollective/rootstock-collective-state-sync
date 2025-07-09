@@ -1,4 +1,7 @@
-subgraphProvider:
-  apiKey: "THE_GRAPH_API_KEY" 
+subgraphProviders:
+  main:
+    apiKey: "THE_GRAPH_API_KEY_MAIN" 
+  governance:
+    apiKey: "THE_GRAPH_API_KEY_GOV" 
 database:
   connectionString: "DATABASE_CONNECTION_STRING"
