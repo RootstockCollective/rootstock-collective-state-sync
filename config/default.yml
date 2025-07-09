@@ -23,6 +23,7 @@ entities:
         type: [String]
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BackerStakingHistory
     columns:
       - name: id
@@ -37,6 +38,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: GaugeStakingHistory
     columns:
       - name: id
@@ -55,6 +57,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: Builder
     columns:
       - name: id
@@ -71,6 +74,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BackerRewardPercentage
     columns:
       - name: id
@@ -85,6 +89,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BuilderState
     columns:
       - name: id
@@ -105,6 +110,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: GaugeToBuilder
     columns:
       - name: id
@@ -113,6 +119,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BuilderRewardsClaimed
     columns:
       - name: id
@@ -125,6 +132,7 @@ entities:
         type: BigInt
     primaryKey:
         - id
+    subgraphProvider: "main"
   - name: Backer
     columns:
       - name: id
@@ -135,6 +143,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BackersRewardsClaimed
     columns:
       - name: id
@@ -147,6 +156,7 @@ entities:
         type: Backer
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BackerToBuilder
     columns:
       - name: id
@@ -161,6 +171,7 @@ entities:
         type: BuilderState
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: BackerToBuilderRewardsClaimed
     columns:
       - name: id
@@ -173,6 +184,7 @@ entities:
         type: BackerToBuilder
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: Cycle
     columns:
       - name: id
@@ -191,6 +203,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: ContractConfig
     columns:
       - name: id
@@ -209,6 +222,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: GlobalMetric
     columns:
       - name: id
@@ -221,6 +235,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
   - name: DailyAllocation
     columns:
       - name: id
@@ -231,3 +246,75 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "main"
+  - name: Account
+    columns:
+      - name: id
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
+  - name: Proposal
+    columns:
+      - name: id
+        type: Bytes
+      - name: proposalId
+        type: Bytes
+      - name: description
+        type: String
+      - name: votesFor
+        type: BigInt
+      - name: votesAgainst
+        type: BigInt
+      - name: votesAbstains
+        type: BigInt
+      - name: voteEnd
+        type: BigInt
+      - name: voteStart
+        type: BigInt
+      - name: quorum
+        type: BigInt
+      - name: state
+        type: String
+      - name: rawState
+        type: Integer
+      - name: createdAt
+        type: BigInt
+      - name: createdAtBlock
+        type: BigInt
+      - name: signatures
+        type: [Bytes]
+      - name: targets
+        type: [Bytes]
+      - name: values
+        type: [BigInt]
+      - name: calldatas
+        type: [Bytes]
+      - name: proposer
+        type: Account
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
+  - name: VoteCast
+    columns:
+      - name: id
+        type: Bytes
+      - name: voter
+        type: Account
+      - name: proposal
+        type: Proposal
+      - name: support
+        type: Integer
+      - name: weight
+        type: BigInt
+      - name: reason
+        type: String
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "governance"

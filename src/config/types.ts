@@ -6,7 +6,7 @@ interface Config {
     app: App;
     database: Database;
     blockchain: Blockchain;
-    subgraphProvider: SubgraphProvider;
+    subgraphProviders: SubgraphProvider[];
     contracts: Contract[];
     entities: Entity[];
 }
@@ -52,7 +52,7 @@ interface Entity {
     name: string;
     columns: Column[];
     primaryKey: string[];
-    thegraph: string;
+    subgraphProvider: string;
 }
 
 export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity }
