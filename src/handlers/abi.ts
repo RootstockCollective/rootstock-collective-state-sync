@@ -3,6 +3,7 @@ import { BackersManagerAbi } from '../abis/BackersManagerAbi'
 import { BuilderRegistryAbi } from '../abis/BuilderRegistryAbi'
 import { CycleTimeKeeperAbi } from '../abis/CycleTimeKeeperAbi'
 import { GaugeAbi } from '../abis/GaugeAbi'
+import { GovernanceAbi } from '../abis/GovernanceAbi'
 import { RewardDistributorAbi } from '../abis/RewardDistributorAbi'
 
 export * from '../abis/BackersManagerAbi'
@@ -16,6 +17,7 @@ const abis = {
   BuilderRegistryAbi,
   CycleTimeKeeperAbi,
   GaugeAbi,
+  GovernanceAbi,
   RewardDistributorAbi,
 } as const
 

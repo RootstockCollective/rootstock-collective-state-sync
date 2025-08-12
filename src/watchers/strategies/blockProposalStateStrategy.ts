@@ -3,7 +3,7 @@ import {AppContext} from "../../context/types";
 import {Address, PublicClient} from "viem";
 import {DatabaseContext} from "../../context/db";
 import {GovernanceAbi} from "../../abis/GovernanceAbi";
-import { CONTRACT_NAMES, getContractAddress } from "../../config/contracts";
+import { CONTRACT_NAMES, getContractAddress } from "../../handlers/contracts";
 import log from "loglevel";
 
 export enum ProposalState {
