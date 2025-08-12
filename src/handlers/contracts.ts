@@ -1,4 +1,4 @@
-import { Config, Contract } from './types';
+import { Config } from '../config/types';
 
 /**
  * Contract name constants to avoid typos and make refactoring easier

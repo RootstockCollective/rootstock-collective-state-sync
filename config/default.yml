@@ -36,7 +36,7 @@ entities:
         type: [String]
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BackerStakingHistory
     columns:
       - name: id
@@ -51,7 +51,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: GaugeStakingHistory
     columns:
       - name: id
@@ -70,7 +70,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: Builder
     columns:
       - name: id
@@ -87,7 +87,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BackerRewardPercentage
     columns:
       - name: id
@@ -102,7 +102,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BuilderState
     columns:
       - name: id
@@ -123,7 +123,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: GaugeToBuilder
     columns:
       - name: id
@@ -132,7 +132,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BuilderRewardsClaimed
     columns:
       - name: id
@@ -145,7 +145,7 @@ entities:
         type: BigInt
     primaryKey:
         - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: Backer
     columns:
       - name: id
@@ -156,7 +156,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BackersRewardsClaimed
     columns:
       - name: id
@@ -169,7 +169,7 @@ entities:
         type: Backer
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BackerToBuilder
     columns:
       - name: id
@@ -184,7 +184,7 @@ entities:
         type: BuilderState
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: BackerToBuilderRewardsClaimed
     columns:
       - name: id
@@ -197,7 +197,7 @@ entities:
         type: BackerToBuilder
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: Cycle
     columns:
       - name: id
@@ -216,7 +216,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: ContractConfig
     columns:
       - name: id
@@ -235,7 +235,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: GlobalMetric
     columns:
       - name: id
@@ -248,7 +248,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: DailyAllocation
     columns:
       - name: id
@@ -259,7 +259,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
-    subgraphProvider: "main"
+    subgraphProvider: "collective-rewards"
   - name: Account
     columns:
       - name: id
