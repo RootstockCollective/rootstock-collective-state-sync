@@ -1,11 +1,12 @@
 // blockWatcher.ts
-import { PublicClient, type Block } from 'viem'
 import log from 'loglevel';
+import { PublicClient, type Block } from 'viem';
 
-import { ChangeStrategy } from './strategies/types';
-import { createBlockChangeLogStrategy } from './strategies/blockChangeLogStrategy';
-import { AppContext } from '../context/types';
 import { createClient } from '../client/createClient';
+import { AppContext } from '../context/types';
+import { createBlockChangeLogStrategy } from './strategies/blockChangeLogStrategy';
+import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
+import { ChangeStrategy } from './strategies/types';
 
 
 const createBlockHandlerWithStrategies = async (
@@ -13,6 +14,7 @@ const createBlockHandlerWithStrategies = async (
   client: PublicClient
 ) => {
   const strategies: ChangeStrategy[] = [
+    createRevertReorgsStrategy(),
     createBlockChangeLogStrategy(),
   ];
 
@@ -60,4 +62,5 @@ const watchBlocks = async (
   });
 }
 
-export { watchBlocks }
+export { watchBlocks };
+

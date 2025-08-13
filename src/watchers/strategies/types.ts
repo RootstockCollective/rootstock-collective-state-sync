@@ -12,11 +12,14 @@ interface ChangeStrategy {
   detectAndProcess: (params: ChangeStrategyParams) => Promise<boolean>;
 }
 
+export type BlockHash = string
+
 interface BlockChangeLog {
-  id: string;
+  id: BlockHash;
   blockNumber: bigint;
   blockTimestamp: bigint;
   updatedEntities: string[];
 }
 
-export type { ChangeStrategyParams, ChangeStrategy, BlockChangeLog }
+export type { BlockChangeLog, ChangeStrategy, ChangeStrategyParams };
+
