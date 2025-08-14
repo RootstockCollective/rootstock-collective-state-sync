@@ -1,6 +1,6 @@
 subgraphProviders:
-  main:
-    apiKey: "THE_GRAPH_API_KEY_MAIN" 
+  collective-rewards:
+    apiKey: "THE_GRAPH_API_KEY_CR" 
   governance:
     apiKey: "THE_GRAPH_API_KEY_GOV" 
 database:
