@@ -1,11 +1,12 @@
-type ColumnType = 'Boolean' | 'BigInt' | 'Bytes' | 'String';
+type ColumnType = 'Boolean' | 'BigInt' | 'Bytes' | 'String' | 'Integer';
 type ArrayColumnType = [ColumnType];
 
 const columnTypeMap: Record<ColumnType, string> = {
     Boolean: 'BOOLEAN',
     BigInt: 'TEXT',
     Bytes: 'BYTEA',
-    String: 'TEXT'
+    String: 'TEXT',
+    Integer: 'INTEGER'
 } as const;
 
 const isColumnType = (type: string): type is ColumnType =>

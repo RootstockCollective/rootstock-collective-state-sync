@@ -24,6 +24,7 @@ const columnTypeHandlers: Record<ColumnType, (table: Knex.TableBuilder, name: st
     Bytes: (table, name) => table.binary(name).notNullable(),
     String: (table, name) => table.text(name).notNullable(),
     Boolean: (table, name) => table.boolean(name).notNullable(),
+    Integer: (table, name) => table.integer(name).notNullable(),
 };
 
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
