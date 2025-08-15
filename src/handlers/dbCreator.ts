@@ -1,9 +1,9 @@
+import { Knex } from 'knex';
 import log from 'loglevel';
 import { App, Column, Entity } from '../config/types';
-import { columnTypeMap, isColumnType, isArrayColumnType, ColumnType } from './types';
-import { AppContext } from '../context/types';
-import { Knex } from 'knex';
 import { DatabaseSchema } from '../context/schema';
+import { AppContext } from '../context/types';
+import { ColumnType, columnTypeMap, isArrayColumnType, isColumnType } from './types';
 
 const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType[] => {
     const referencedEntity = schema.entities.get(column.type);
@@ -127,4 +127,4 @@ const getExistingTables = async (db: Knex): Promise<string[]> => {
     return result.map((row) => row.table_name);
 }
 
-export { createDb }
+export { createDb };
