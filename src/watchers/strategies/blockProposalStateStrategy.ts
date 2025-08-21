@@ -68,28 +68,20 @@ const getProposalStatesViaMulticall = async (
   return stateMap;
 }
 
-const getStateDescription = (rawState: number): string => {
-  switch (rawState) {
-    case ProposalState.Pending:
-      return 'Pending';
-    case ProposalState.Active:
-      return 'Active';
-    case ProposalState.Canceled:
-      return 'Canceled';
-    case ProposalState.Defeated:
-      return 'Defeated';
-    case ProposalState.Succeeded:
-      return 'Succeeded';
-    case ProposalState.Queued:
-      return 'Queued';
-    case ProposalState.Expired:
-      return 'Expired';
-    case ProposalState.Executed:
-      return 'Executed';
-    default:
-      return 'Unknown';
-  }
-}
+const stateDescriptions: Record<ProposalState, string> = {
+  [ProposalState.Pending]: "Pending",
+  [ProposalState.Active]: "Active",
+  [ProposalState.Canceled]: "Canceled",
+  [ProposalState.Defeated]: "Defeated",
+  [ProposalState.Succeeded]: "Succeeded",
+  [ProposalState.Queued]: "Queued",
+  [ProposalState.Expired]: "Expired",
+  [ProposalState.Executed]: "Executed",
+};
+
+const getStateDescription = (rawState: ProposalState): string => {
+  return stateDescriptions[rawState] ?? "Unknown";
+};
 
 const createStrategy = (): ChangeStrategy => {
 

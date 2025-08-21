@@ -6,7 +6,7 @@ interface Config {
     app: App;
     database: Database;
     blockchain: Blockchain;
-    subgraphProviders: SubgraphProvider[];
+    subgraphProviders: Record<string, SubgraphProvider>;
     contracts: Contract[];
     entities: Entity[];
 }
@@ -31,7 +31,6 @@ interface Blockchain {
 }
 
 interface SubgraphProvider {
-    name: string;
     url: string;
     id: string;
     maxRowsPerRequest: number;
