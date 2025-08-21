@@ -7,9 +7,13 @@ database:
   maxRetries: 3
   initialRetryDelay: 1000
   ssl: true
-subgraphProvider:
-  url: "https://gateway.thegraph.com/api"
-  maxRowsPerRequest: 1000
+subgraphProviders:
+  collective-rewards:
+    url: "https://gateway.thegraph.com/api"
+    maxRowsPerRequest: 1000
+  governance:
+    url: "https://gateway.thegraph.com/api"
+    maxRowsPerRequest: 1000
 entities:
   - name: LastProcessedBlock
     columns:
