@@ -8,8 +8,9 @@ import { AppContext } from "./types";
 const createContexts = (config: Config): AppContext => {
     const graphqlContexts: Record<string, GraphQlContext> = {};
     
-    for (const provider of config.subgraphProviders) {
-        graphqlContexts[provider.name] = createSubgraphContext(provider);
+    // Create contexts directly from the map
+    for (const [name, provider] of Object.entries(config.subgraphProviders)) {
+        graphqlContexts[name] = createSubgraphContext(provider);
     }
 
     return {
