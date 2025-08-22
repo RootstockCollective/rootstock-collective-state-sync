@@ -7,9 +7,15 @@ import { AppContext } from "./types";
 
 const createContexts = (config: Config): AppContext => ({
     schema: createSchemaContext(config.entities),
-    dbContext: createDatabaseContext(config.database),
+    dbContext: createDatabaseContext(config.database, 'public'),
     graphqlContext: createTheGraphContext(config.subgraphProvider),
     config
 });
 
-export { createContexts }
+// Pure function to create context with different schema
+const createContextWithSchema = (baseContext: AppContext, schemaName: string): AppContext => ({
+    ...baseContext,
+    dbContext: createDatabaseContext(baseContext.config.database, schemaName)
+});
+
+export { createContexts, createContextWithSchema }

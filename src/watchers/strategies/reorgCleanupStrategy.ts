@@ -2,8 +2,12 @@ import { info } from 'loglevel';
 import { Hex, PublicClient } from 'viem';
 import { DatabaseContext } from '../../context/db';
 import { AppContext } from '../../context/types';
+import { createContextWithSchema } from '../../context/create';
 import { BlockChangeLog, ChangeStrategy } from './types';
 import { getLastProcessedBlock } from './utils';
+import { createSchema, switchSchema } from '../../handlers/schema';
+import { createDb } from '../../handlers/dbCreator';
+import { syncEntities } from '../../handlers/subgraphSyncer';
 
 const getBlockFromNode = (client: PublicClient, blockNumber: bigint) => {
   return client.getBlock({ blockNumber });
@@ -35,6 +39,7 @@ const fetchBatchByBlockNumberDesc = async (
 
 const BATCH_SIZE = 1000; // TODO: @jurajpiar make env var
 
+// TODO: verify if we need this function since we no longer use it
 const findLastValidBlock = async (db: DatabaseContext['db'], client: PublicClient, fromBlock: bigint) => {
 
   let upperExclusive: bigint = fromBlock
@@ -63,16 +68,14 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
   const detectAndProcess = async ({
     client,
-    context: {
-      dbContext: {
-        db
-      }
-    }
+    context
   }: {
     context: AppContext;
     client: PublicClient;
   }): Promise<boolean> => {
-    const { id, blockNumber } = await getLastProcessedBlock(db);
+    const { dbContext } = context;
+
+    const { id, blockNumber } = await getLastProcessedBlock(dbContext.db);
 
     const {
       hash: onchainBlockHash,
@@ -84,24 +87,15 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
     if (onchainBlockHash !== blockHash) {
       info('Reorg detected');
-      const lastValidBlockNumber = await findLastValidBlock(db, client, blockNumber).catch((e) => {
-        throw new Error('Failed to find last valid block number with error: ' + e.message);
 
-      });
+      await createSchema(dbContext, 'new_public');
+      const newContext = createContextWithSchema(context, 'new_public');
+      const entities = await createDb(newContext, false, true);
 
-      await db.transaction((tx) => {
-        // FIXME: None of the other tables reference block hash, which may cause data inconsistency when deleting block change logs
-        db<BlockChangeLog>('BlockChangeLog')
-          .transacting(tx)
-          .where('blockNumber', '>', lastValidBlockNumber).delete()
-          .then(tx.commit)
-          .catch((e) => {
-            tx.rollback();
-            throw new Error('Failed to delete block change logs with error: ' + e.message);
-          });
-      }).catch((e) => {
-        throw new Error('Reorg cleanup transaction failed with error: ' + e.message);
-      });
+      // Initial sync of entities
+      await syncEntities(newContext, entities);
+
+      await switchSchema(dbContext, 'new_public', 'public');
 
       return true;
     }
