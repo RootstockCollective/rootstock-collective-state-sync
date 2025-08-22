@@ -3,6 +3,8 @@ import knex, { Knex } from 'knex';
 import * as fs from 'fs';
 import type { ConnectionOptions } from 'tls'
 
+export const PUBLIC_SCHEMA = 'public';
+
 interface DatabaseContext {
     db: Knex;
     schema: string; 

@@ -4,7 +4,7 @@ import { DatabaseContext } from "../context/db";
 const createSchema = async (context: DatabaseContext, schema: string) => {
     const { db } = context;
 
-    await db.raw(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+    await db.raw('CREATE SCHEMA IF NOT EXISTS ??', [schema]);
 }
 
 const switchSchema = async (
@@ -17,13 +17,13 @@ const switchSchema = async (
 
     await db.transaction(async trx => {
         // 1. Rename current schema to old schema
-        await trx.raw(`ALTER SCHEMA ${currentSchema} RENAME TO ${oldSchema}`);
+        await trx.raw('ALTER SCHEMA ?? RENAME TO ??', [currentSchema, oldSchema]);
 
         // 2. Rename new schema to current schema
-        await trx.raw(`ALTER SCHEMA ${newSchema} RENAME TO ${currentSchema}`);
+        await trx.raw('ALTER SCHEMA ?? RENAME TO ??', [newSchema, currentSchema]);
 
         // 3. Drop the old schema
-        await trx.raw(`DROP SCHEMA IF EXISTS ${oldSchema} CASCADE`);
+        await trx.raw('DROP SCHEMA IF EXISTS ?? CASCADE', [oldSchema]);
     });
 }
 

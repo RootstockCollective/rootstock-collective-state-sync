@@ -1,6 +1,6 @@
 import { info } from 'loglevel';
 import { Hex, PublicClient } from 'viem';
-import { DatabaseContext } from '../../context/db';
+import { DatabaseContext, PUBLIC_SCHEMA } from '../../context/db';
 import { AppContext } from '../../context/types';
 import { createContextWithSchema } from '../../context/create';
 import { BlockChangeLog, ChangeStrategy } from './types';
@@ -64,6 +64,9 @@ const findLastValidBlock = async (db: DatabaseContext['db'], client: PublicClien
   }
 }
 
+const NEW_SCHEMA = 'new_public';
+const SHOULD_INITIALIZE_DB = false;
+const IS_PRODUCTION_MODE = true;
 export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
   const detectAndProcess = async ({
@@ -88,14 +91,14 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
     if (onchainBlockHash !== blockHash) {
       info('Reorg detected');
 
-      await createSchema(dbContext, 'new_public');
-      const newContext = createContextWithSchema(context, 'new_public');
-      const entities = await createDb(newContext, false, true);
+      await createSchema(dbContext, NEW_SCHEMA);
+      const newContext = createContextWithSchema(context, NEW_SCHEMA);
+      const entities = await createDb(newContext, IS_PRODUCTION_MODE, SHOULD_INITIALIZE_DB);
 
       // Initial sync of entities
       await syncEntities(newContext, entities);
 
-      await switchSchema(dbContext, 'new_public', 'public');
+      await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
 
       return true;
     }
