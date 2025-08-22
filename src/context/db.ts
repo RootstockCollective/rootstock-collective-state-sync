@@ -3,7 +3,6 @@ import knex, { Knex } from 'knex';
 import * as fs from 'fs';
 import type { ConnectionOptions } from 'tls'
 
-
 interface DatabaseContext {
     db: Knex;
     batchSize: number;

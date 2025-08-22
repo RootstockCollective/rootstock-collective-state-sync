@@ -3,7 +3,7 @@ import log from 'loglevel';
 import { App, Column, Entity } from '../config/types';
 import { DatabaseSchema } from '../context/schema';
 import { AppContext } from '../context/types';
-import { ColumnType, columnTypeMap, isArrayColumnType, isColumnType } from './types';
+import { ColumnType, columnTypeConfigs, isArrayColumnType, isColumnType } from './types';
 
 const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType[] => {
     const referencedEntity = schema.entities.get(column.type);
@@ -19,21 +19,13 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): Colu
     return idColumns.map(col => col!.type);
 }
 
-const columnTypeHandlers: Record<ColumnType, (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder> = {
-    BigInt: (table, name) => table.text(name).notNullable(),
-    Bytes: (table, name) => table.binary(name).notNullable(),
-    String: (table, name) => table.text(name).notNullable(),
-    Boolean: (table, name) => table.boolean(name).notNullable(),
-    Integer: (table, name) => table.integer(name).notNullable(),
-};
-
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
-    const handler = columnTypeHandlers[type];
-    if (!handler) {
+    const config = columnTypeConfigs[type];
+    if (!config) {
         log.error(`Invalid column type: ${type}`);
         throw new Error(`Invalid column type: ${type}`);
     }
-    handler(table, name);
+    config.knexHandler(table, name);
 }
 
 const createTable = async (trx: Knex.Transaction, entity: Entity, schema: DatabaseSchema): Promise<void> => {
@@ -52,8 +44,9 @@ const createTable = async (trx: Knex.Transaction, entity: Entity, schema: Databa
             else if (isColumnType(column.type)) {
                 createColumn(table, column.name, column.type);
             } else if (isArrayColumnType(column.type)) {
-                const baseType = column.type[0];
-                table.specificType(column.name, `${columnTypeMap[baseType]}[]`).notNullable();
+                const baseType = column.type[0] as ColumnType;
+                const config = columnTypeConfigs[baseType];
+                table.specificType(column.name, `${config.sqlType}[]`).notNullable();
             }
             else {
                 log.error(`Invalid column type: ${column.type}`);
