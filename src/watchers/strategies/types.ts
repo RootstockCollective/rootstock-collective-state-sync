@@ -21,5 +21,12 @@ interface BlockChangeLog {
   updatedEntities: string[];
 }
 
-export type { BlockChangeLog, ChangeStrategy, ChangeStrategyParams };
+interface LastProcessedBlock {
+  id: Boolean; // there will only ever be one last processed block
+  hash: BlockHash;
+  number: bigint;
+  timestamp: bigint;
+}
+
+export type { BlockChangeLog, ChangeStrategy, ChangeStrategyParams, LastProcessedBlock };
 

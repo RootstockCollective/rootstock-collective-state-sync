@@ -11,6 +11,19 @@ subgraphProvider:
   url: "https://gateway.thegraph.com/api"
   maxRowsPerRequest: 1000
 entities:
+  - name: LastProcessedBlock
+    columns:
+      - name: id
+        type: Boolean
+      - name: number
+        type: BigInt
+      - name: timestamp
+        type: BigInt
+      - name: hash
+        type: Bytes
+    primaryKey:
+      - id
+  
   - name: BlockChangeLog
     columns:
       - name: id

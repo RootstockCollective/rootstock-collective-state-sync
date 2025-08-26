@@ -1,9 +1,9 @@
 import log from 'loglevel';
 
 import { executeRequests } from '../context/subgraphProvider';
-import { createEntityQueries } from './subgraphQueryBuilder';
-import { executeUpsert } from './dbUpsert';
 import { AppContext } from '../context/types';
+import { executeUpsert } from './dbUpsert';
+import { createEntityQueries } from './subgraphQueryBuilder';
 import { EntityDataCollection } from './types';
 
 interface EntitySyncStatus {
@@ -133,4 +133,5 @@ const syncEntities = async (
     await processEntityData(context, entityData);
 }
 
-export { syncEntities }
+export { syncEntities };
+
