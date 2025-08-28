@@ -11,13 +11,11 @@ interface GraphQLRequest {
 }
 
 interface GraphQLResponse<T> {
-    data: {
-        [key: string]: T[];
-    }
-    errors?: Array<{
+    data: Record<string, T[]>;
+    errors?: {
         message: string;
-        locations: Array<{ line: number; column: number }>;
-    }>;
+        locations: { line: number; column: number }[];
+    }[];
 }
 
 interface GraphQlContext {

@@ -64,7 +64,11 @@ const collectEntityData = async (
 
         requests = [];
         for (const [entityName, data] of Object.entries(results)) {
-            const currentStatus = entityStatus[entityName]!;
+            const currentStatus = entityStatus[entityName];
+            if (!currentStatus) {
+                throw new Error(`No status found for entity "${entityName}"`);
+            }
+
             const lastId = data.length > 0 ? data[data.length - 1].id : null;
             log.info(`Entity ${entityName}: Last ID from batch: ${lastId}, Records in batch: ${data.length}`);
 

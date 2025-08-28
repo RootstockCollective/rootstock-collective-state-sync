@@ -6,9 +6,9 @@ export default tseslint.config(
     ignores: ['eslint.config.mjs', 'dist/**', 'node_modules/**', 'config/**'],
   },
   js.configs.recommended,
-  tseslint.configs.recommended,
+  tseslint.configs.strict,
+  tseslint.configs.stylistic,
   {
-   
     rules: {
       'semi': ['error', 'always'],
       'quotes': ['error', 'single'],
