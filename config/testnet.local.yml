@@ -7,7 +7,7 @@ blockchain:
   network: "testnet"
 subgraphProvider:
   url: "https://api.studio.thegraph.com/query"
-  id: "rootstockcollective-collective-rewards-local-2/version/latest"
+  id: "rootstockcollective-collective-rewards-local/version/latest"
   apiKey: 106677
 contracts:
   - name: BackersManager

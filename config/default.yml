@@ -177,15 +177,13 @@ entities:
     columns:
       - name: id
         type: Bytes
-      - name: totalPotentialReward
-        type: BigInt
       - name: rewardsERC20
         type: BigInt
       - name: rewardsRBTC
         type: BigInt
       - name: onDistributionPeriod
         type: Boolean
-      - name: periodFinish
+      - name: cycleStart
         type: BigInt
       - name: cycleDuration
         type: BigInt
@@ -203,13 +201,33 @@ entities:
         type: Bytes
       - name: rewardDistributor
         type: Bytes
-      - name: builders
-        type: [Bytes]
       - name: blockNumber
         type: BigInt
       - name: blockTimestamp
         type: BigInt
       - name: blockHash
         type: Bytes
+    primaryKey:
+      - id
+  - name: GlobalMetric
+    columns:
+      - name: id
+        type: Bytes
+      - name: builders
+        type: [Bytes]
+      - name: totalAllocation
+        type: BigInt
+      - name: totalPotentialReward
+        type: BigInt
+    primaryKey:
+      - id
+  - name: DailyAllocation
+    columns:
+      - name: id
+        type: Bytes
+      - name: day
+        type: Integer
+      - name: totalAllocation
+        type: BigInt
     primaryKey:
       - id
