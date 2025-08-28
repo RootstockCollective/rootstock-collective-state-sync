@@ -37,34 +37,7 @@ const fetchBatchByBlockNumberDesc = async (
   return query;
 }
 
-const BATCH_SIZE = 1000; // TODO: @jurajpiar make env var
-
-// TODO: verify if we need this function since we no longer use it
-const findLastValidBlock = async (db: DatabaseContext['db'], client: PublicClient, fromBlock: bigint) => {
-
-  let upperExclusive: bigint = fromBlock
-
-  while (true) {
-    const candidates = await fetchBatchByBlockNumberDesc(db, upperExclusive, BATCH_SIZE);
-
-    if (candidates.length === 0) {
-      return -1n;
-    }
-
-    for (const block of candidates) {
-      const onchainBlock = await getBlockFromNode(client, block.blockNumber);
-
-      if (onchainBlock && areHashesEqual(convertDbIdToHash(block.id), onchainBlock.hash)) {
-        return block.blockNumber;
-      }
-    }
-
-    const last = candidates[candidates.length - 1];
-    upperExclusive = last.blockNumber;
-  }
-}
-
-const NEW_SCHEMA = 'new_public';
+const NEW_SCHEMA = 'tmp_public';
 const SHOULD_INITIALIZE_DB = false;
 const IS_PRODUCTION_MODE = true;
 export const createRevertReorgsStrategy = (): ChangeStrategy => {
