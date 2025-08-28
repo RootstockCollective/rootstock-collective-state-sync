@@ -1,5 +1,4 @@
 import { Entity, Column } from '../config/types';
-import { toCamelCase } from '../utils/toCamelCase';
 import { GraphQLRequest } from '../context/subgraphProvider';
 import { DatabaseSchema } from '../context/schema';
 import { pluralizeEntityName } from '../utils/pluralizeEntityName';
@@ -27,14 +26,14 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
   }`;
 }
 
-
+type FilterValue = string | bigint | number | { [key: string]: FilterValue };
 interface QueryOptions {
   first?: number;
   order?: {
     by: string;
     direction: 'asc' | 'desc';
   }
-  filters?: Record<string, any>;
+  filters?: FilterValue;
   alias?: string;
 }
 
@@ -111,7 +110,7 @@ const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string 
 /**
  * Formats a value for GraphQL query arguments
  */
-const formatQueryValue = (value: any): string => {
+const formatQueryValue = (value: FilterValue): string => {
   if (typeof value === 'string') return `"${value}"`;
   if (typeof value === 'bigint') return value.toString();
   if (typeof value === 'object' && value !== null) {

@@ -11,12 +11,18 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): Colu
         throw new Error(`Referenced entity ${column.type} not found in schema`);
     }
 
-    const idColumns = referencedEntity.primaryKey.map(key => referencedEntity.columns.find(col => col.name === key));
-    if (!idColumns || !idColumns.every(col => col && isColumnType(col.type))) {
-        throw new Error(`Invalid id column type in referenced entity ${column.type}`);
-    }
+    const idColumns = referencedEntity.primaryKey.map(key => {
+        const col = referencedEntity.columns.find(col => col.name === key);
+        if (!col) {
+            throw new Error(`Primary key column '${key}' not found in entity ${column.type}`);
+        }
+        if (!isColumnType(col.type)) {
+            throw new Error(`Invalid column type for primary key '${key}' in entity ${column.type}`);
+        }
+        return col;
+    });
 
-    return idColumns.map(col => col!.type);
+    return idColumns.map(col => col.type);
 }
 
 const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
