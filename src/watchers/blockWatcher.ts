@@ -4,21 +4,23 @@ import { PublicClient, type Block } from 'viem';
 
 import { createClient } from '../client/createClient';
 import { AppContext } from '../context/types';
-import { createBlockChangeLogStrategy } from './strategies/blockChangeLogStrategy';
 import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
+import {createBlockChangeLogStrategy, createNewProposalStrategy, createProposalStateStrategy} from "./strategies";
 
 
 const createBlockHandlerWithStrategies = async (
   context: AppContext,
-  client: PublicClient
+  client: PublicClient,
 ) => {
   const strategies: ChangeStrategy[] = [
     createRevertReorgsStrategy(),
     createBlockChangeLogStrategy(),
+    createNewProposalStrategy(),
+    createProposalStateStrategy(),
   ];
 
-  return async (): Promise<void> => {
+  return async (blockNumber: bigint | null): Promise<void> => {
     // Run strategies sequentially to avoid race conditions on database updates
     let totalProcessed = 0;
 
@@ -26,7 +28,8 @@ const createBlockHandlerWithStrategies = async (
       try {
         const processed = await strategy.detectAndProcess({
           context: context,
-          client: client
+          client: client,
+          blockNumber
         });
         if (processed) {
           log.info(`Strategy ${strategy.name} processed changes successfully`);
@@ -55,7 +58,7 @@ const watchBlocks = async (
   return client.watchBlocks({
     onBlock: async (block: Block) => {
       log.info(`Processing block ${block.number}`);
-      await handleBlockWithStrategies();
+      await handleBlockWithStrategies(block.number);
     },
     emitMissed: true,
     pollingInterval: 1000,

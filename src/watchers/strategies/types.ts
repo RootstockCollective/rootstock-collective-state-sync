@@ -5,6 +5,7 @@ import { AppContext } from '../../context/types';
 interface ChangeStrategyParams {
   context: AppContext;
   client: PublicClient;
+  blockNumber: bigint | null;
 }
 
 interface ChangeStrategy {
@@ -21,5 +22,17 @@ interface BlockChangeLog {
   updatedEntities: string[];
 }
 
-export type { BlockChangeLog, ChangeStrategy, ChangeStrategyParams };
+interface Proposal {
+  id: string;
+  voteStart: bigint;
+  voteEnd: bigint;
+  votesFor: bigint;
+  votesAgainst: bigint;
+  votesAbstains: bigint;
+  quorum: bigint;
+  state: string;
+  rawState: number;
+  createdAtBlock: bigint;
+}
 
+export type { ChangeStrategyParams, ChangeStrategy, BlockChangeLog, Proposal }

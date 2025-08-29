@@ -86,12 +86,12 @@ const executeRequests = async (
 }
 
 // Factory function to create a TheGraph context
-const createTheGraphContext = ({ url, id, maxRowsPerRequest, apiKey }: SubgraphProvider): GraphQlContext => ({
+const createSubgraphContext = ({ url, id, maxRowsPerRequest, apiKey }: SubgraphProvider): GraphQlContext => ({
     endpoint: `${url}/${apiKey}/${id}`,
     pagination: {
         maxRowsPerRequest
     }
 });
 
-export { createTheGraphContext, executeRequests }
+export { createSubgraphContext, executeRequests }
 export type { GraphQLRequest, GraphQLResponse, GraphQlContext }

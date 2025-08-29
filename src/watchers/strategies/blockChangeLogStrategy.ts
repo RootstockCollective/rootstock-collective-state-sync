@@ -18,9 +18,23 @@ const createStrategy = (): ChangeStrategy => {
     const lastProcessedBlock = await getLastProcessedBlock(context.dbContext.db);
     const fromBlock = BigInt(lastProcessedBlock.blockNumber);
 
+    // Find the subgraph context for BlockChangeLog entity
+    const blockChangeLogEntity = context.schema.entities.get('BlockChangeLog');
+    if (!blockChangeLogEntity) {
+      log.error('BlockChangeLog entity not found in schema');
+      return false;
+    }
+
+    const subgraphName = blockChangeLogEntity.subgraphProvider;
+    const graphqlContext = context.graphqlContexts[subgraphName];
+    if (!graphqlContext) {
+      log.error(`Subgraph context for ${subgraphName} not found`);
+      return false;
+    }
+
     // Query all block change logs since the last processed block
     const query = createEntityQuery(context.schema, 'BlockChangeLog', {
-      first: context.graphqlContext.pagination.maxRowsPerRequest,
+      first: graphqlContext.pagination.maxRowsPerRequest,
       order: {
         by: 'blockNumber',
         direction: 'desc'
@@ -30,7 +44,7 @@ const createStrategy = (): ChangeStrategy => {
       }
     });
 
-    const results = await executeRequests(context.graphqlContext, [query]);
+    const results = await executeRequests(graphqlContext, [query]);
     const blockChangeLogResults = results['BlockChangeLog'] as BlockChangeLog[] || [];
 
     if (blockChangeLogResults[0]?.id === lastProcessedBlock.id.toString()) {
