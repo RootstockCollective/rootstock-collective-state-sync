@@ -8,7 +8,7 @@ blockchain:
 subgraphProviders:
   collective-rewards:
     url: "https://api.studio.thegraph.com/query"
-    id: "rootstockcollective-collective-rewards-local-2/version/latest"
+    id: "rootstockcollective-collective-rewards-local/version/latest"
     maxRowsPerRequest: 1000
     apiKey: 106677
   governance:
