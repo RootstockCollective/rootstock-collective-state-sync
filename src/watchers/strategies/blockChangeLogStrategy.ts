@@ -4,76 +4,107 @@ import { executeRequests } from '../../context/subgraphProvider';
 import { AppContext } from '../../context/types';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
 import { syncEntities } from '../../handlers/subgraphSyncer';
-import { BlockChangeLog, ChangeStrategy } from './types';
+import { EntityDataCollection, WithMetadata } from '../../handlers/types';
+import { BlockChangeLog, ChangeStrategy, LastProcessedBlock } from './types';
 import { getLastProcessedBlock } from './utils';
 
-const createStrategy = (): ChangeStrategy => {
+const STRATEGY_NAME = 'BlockChangeLog';
+const schemaName = STRATEGY_NAME;
 
-  const detectAndProcess = async (params: {
-    context: AppContext;
-    client: PublicClient;
-  }): Promise<boolean> => {
-    const { context } = params;
+const detectAndProcess = async (params: {
+  context: AppContext;
+  client: PublicClient;
+}): Promise<boolean> => {
+  const { context } = params;
 
-    const lastProcessedBlock = await getLastProcessedBlock(context.dbContext.db);
-    const fromBlock = BigInt(lastProcessedBlock.blockNumber);
+  const { blockNumber: lastStoredBlockNumber, id: lastStoredBlockHash } = await getLastProcessedBlock(context.dbContext.db);
+  const fromBlock = BigInt(lastStoredBlockNumber);
 
-    // Query all block change logs since the last processed block
-    const query = createEntityQuery(context.schema, 'BlockChangeLog', {
-      first: context.graphqlContext.pagination.maxRowsPerRequest,
-      order: {
-        by: 'blockNumber',
-        direction: 'desc'
-      },
-      filters: {
-        blockNumber_gte: fromBlock
-      }
-    });
+  // Query all block change logs since the last processed block
+  const changeLogQuery = createEntityQuery(context.schema, schemaName, {
+    first: context.graphqlContext.pagination.maxRowsPerRequest,
+    order: {
+      by: 'blockNumber',
+      direction: 'desc'
+    },
+    filters: {
+      blockNumber_gte: fromBlock
+    },
+    withMetadata: true
+  });
 
-    const results = await executeRequests(context.graphqlContext, [query]);
-    const blockChangeLogResults = results['BlockChangeLog'] as BlockChangeLog[] || [];
+  const results = await executeRequests(context.graphqlContext, [
+    changeLogQuery,
+  ]);
+  const { _meta: lastProcessedBlock } = results as EntityDataCollection<WithMetadata>;
 
-    if (blockChangeLogResults[0]?.id === lastProcessedBlock.id.toString()) {
-      log.info(`${strategy.name}: No new changes since last processed block`);
-
-      return false;
-    }
-
-    // Get all unique entities that were updated in any of these blocks
-    const uniqueEntities = new Set<string>(
-      blockChangeLogResults.flatMap(result => result.updatedEntities || [])
-    );
-
-    const entitiesToSync = Array.from(uniqueEntities);
-
-    if (entitiesToSync.length === 0) {
-      log.info(`${strategy.name}: No entities to sync`);
-
-      return false;
-    }
-
-    // Process the changes specific to this strategy
-    log.info(`${strategy.name}: Processing ${entitiesToSync.length} entities: ${entitiesToSync.join(', ')}`);
-
-    // Add BlockChangeLog itself to the entities to sync
-    const allEntitiesToSync = [...entitiesToSync, 'BlockChangeLog'];
-    const validEntities = allEntitiesToSync.filter(entityName => context.schema.entities.has(entityName));
-
-    if (validEntities.length) {
-      await syncEntities(context, validEntities, fromBlock);
-
-      return true;
-    }
+  if (!lastProcessedBlock) {
+    log.error(`${STRATEGY_NAME}: No last processed block found in the subgraph response ${JSON.stringify(results, null, 2)}, for query: ${JSON.stringify(changeLogQuery, null, 2)}`);
 
     return false;
   }
 
-  const strategy = {
-    name: 'BlockChangeLog',
-    detectAndProcess
+  await context.dbContext.db('LastProcessedBlock')
+    .insert<LastProcessedBlock>({
+      id: true, // there will only ever be one last processed block
+      hash: lastProcessedBlock.block.hash,
+      number: lastProcessedBlock.block.number,
+      timestamp: lastProcessedBlock.block.timestamp
+    })
+    .onConflict('id')
+    .merge()
+    .on('query', function (data: any) {
+      log.debug(`${STRATEGY_NAME}: Updated last processed block to ${lastProcessedBlock.block.hash} at number ${lastProcessedBlock.block.number}`, data);
+    })
+    .then((v) => {
+      log.debug(`${STRATEGY_NAME}: Successfully updated last processed block`, v);
+    })
+    .catch(err => {
+      log.error(`${STRATEGY_NAME}: Failed to update last processed block`, err);
+    });
+
+  const blockChangeLogResults = results[schemaName];
+
+  const [lastBlockChangeLog] = blockChangeLogResults as BlockChangeLog[];
+
+  if (!lastBlockChangeLog) {
+    log.info(`${STRATEGY_NAME}: No block change log found`);
+
+    return false;
   }
 
-  return strategy;
+  if (lastBlockChangeLog.id === lastStoredBlockHash.toString()) {
+    log.info(`${STRATEGY_NAME}: No new changes since last processed event`);
+
+    return false;
+  }
+
+  // Get all unique entities that were updated in any of these blocks
+  const entitiesToSync = Array.from(new Set<string>(lastBlockChangeLog.updatedEntities || []));
+
+  if (entitiesToSync.length === 0) {
+    log.info(`${STRATEGY_NAME}: No entities to sync`);
+
+    return false;
+  }
+
+  // Process the changes specific to this strategy
+  log.info(`${STRATEGY_NAME}: Processing ${entitiesToSync.length} entities: ${entitiesToSync.join(', ')}`);
+
+  // Add BlockChangeLog itself to the entities to sync
+  const allEntitiesToSync = [...entitiesToSync, schemaName];
+  const validEntities = allEntitiesToSync.filter(entityName => context.schema.entities.has(entityName) && entityName !== 'LastProcessedBlock');
+
+  if (validEntities.length) {
+    await syncEntities(context, validEntities, fromBlock);
+
+    return true;
+  }
+
+  return false;
 }
 
-export const createBlockChangeLogStrategy = () => createStrategy(); 
+export default {
+  name: STRATEGY_NAME,
+  detectAndProcess
+} as ChangeStrategy;

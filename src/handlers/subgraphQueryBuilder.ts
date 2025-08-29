@@ -1,10 +1,10 @@
-import { Entity, Column } from '../config/types';
-import { GraphQLRequest } from '../context/subgraphProvider';
+import { Column, Entity } from '../config/types';
 import { DatabaseSchema } from '../context/schema';
+import { GraphQLRequest } from '../context/subgraphProvider';
 import { pluralizeEntityName } from '../utils/pluralizeEntityName';
 
 interface BatchQueryRequest {
-  query: string;
+  request: GraphQLRequest;
   index: number;
 }
 
@@ -16,13 +16,28 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
     throw new Error('Cannot build batch query with empty requests array');
   }
 
-  const queryParts = requests.map(({ query, index }) => {
+  const queryParts = requests.map(({ request: { query }, index }) => {
     const queryName = query.split('(')[0].trim();
     return `${queryName}_${index}: ${query}`;
   });
 
+  const requiresMetadataQuery = requests.some(({ request: { withMetadata } }) => withMetadata);
+
+  const metadataQuery = requiresMetadataQuery ? `
+  _meta {
+    block {
+      number
+      hash
+      timestamp
+    }
+    deployment
+    hasIndexingErrors
+  }
+  ` : '';
+
   return `query BatchQuery {
     ${queryParts.join('\n    ')}
+    ${metadataQuery}
   }`;
 }
 
@@ -35,6 +50,7 @@ interface QueryOptions {
   }
   filters?: FilterValue;
   alias?: string;
+  withMetadata?: boolean;
 }
 
 /**
@@ -46,7 +62,7 @@ const createEntityQuery = (
   options: QueryOptions = {}
 ): GraphQLRequest => {
   const query = generateQuery(schema, entityName, options);
-  return { entityName, query }
+  return { entityName, query, withMetadata: options.withMetadata }
 }
 
 /**
@@ -83,10 +99,10 @@ const buildListQuery = (entity: Entity, schema: DatabaseSchema, options: QueryOp
   const fields = buildFieldSelection(entity.columns, schema);
   const entityName = pluralizeEntityName(entity.name);
   const queryName = options.alias ? `${options.alias}: ${entityName}` : entityName;
-  
+
   const queryArgs = buildQueryArguments(options);
   const argsString = queryArgs.length > 0 ? `(${queryArgs.join(', ')})` : '';
-  
+
   return `${queryName}${argsString} {
       ${fields}
     }`;
@@ -150,4 +166,5 @@ const buildQueryArguments = (options: QueryOptions): string[] => {
   return queryArgs;
 }
 
-export { createEntityQuery, createEntityQueries, buildBatchQuery }
+export { buildBatchQuery, createEntityQueries, createEntityQuery };
+

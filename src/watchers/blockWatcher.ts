@@ -4,7 +4,7 @@ import { PublicClient, type Block } from 'viem';
 
 import { createClient } from '../client/createClient';
 import { AppContext } from '../context/types';
-import { createBlockChangeLogStrategy } from './strategies/blockChangeLogStrategy';
+import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
 import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
 
@@ -15,7 +15,7 @@ const createBlockHandlerWithStrategies = async (
 ) => {
   const strategies: ChangeStrategy[] = [
     createRevertReorgsStrategy(),
-    createBlockChangeLogStrategy(),
+    blockChangeLogStrategy,
   ];
 
   return async (): Promise<void> => {

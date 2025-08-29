@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import { GraphQLMetadata } from '../context/subgraphProvider';
 
 type ColumnType = 'Boolean' | 'BigInt' | 'Bytes' | 'String' | 'Integer';
 type ArrayColumnType = [ColumnType];
@@ -41,10 +42,12 @@ const isArrayColumnType = (type: string | string[]): type is ArrayColumnType => 
         isColumnType(type[0]);
 }
 
-
-
 type EntityRecord = unknown & { id: string };
-type EntityDataCollection = Record<string, EntityRecord[]>;
 
-export type { ColumnType, ArrayColumnType, EntityDataCollection, EntityRecord, ColumnTypeConfig }
-export { columnTypeConfigs, isColumnType, isArrayColumnType }
+type WithMetadata = true;
+type EntityDataCollection<WMeta extends boolean = false> = WMeta extends WithMetadata ?
+    Record<string, EntityRecord[]> & { _meta: GraphQLMetadata } : Record<string, EntityRecord[]>;
+
+export { columnTypeConfigs, isArrayColumnType, isColumnType };
+export type { ArrayColumnType, ColumnType, ColumnTypeConfig, EntityDataCollection, EntityRecord, WithMetadata };
+
