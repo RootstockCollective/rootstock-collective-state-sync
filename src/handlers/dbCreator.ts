@@ -67,10 +67,8 @@ const createTable = async (trx: Knex.Transaction, entity: Entity, schema: Databa
     log.info(`Created table: ${entity.name}`);
 }
 
-const createDb = async (context: AppContext, appConfig: App): Promise<string[]> => {
+const createDb = async (context: AppContext, productionMode: boolean, initializeDb: boolean): Promise<string[]> => {
     const { schema, dbContext: { db } } = context;
-
-    const { productionMode, initializeDb } = appConfig;
 
     const schemaEntities = Array.from(schema.entities.keys());
     let entities: string[];
@@ -121,8 +119,7 @@ const createDb = async (context: AppContext, appConfig: App): Promise<string[]> 
 const getExistingTables = async (db: Knex): Promise<string[]> => {
     const result = await db<{ table_name: string }>('information_schema.tables')
         .select('table_name')
-        .where('table_schema', 'public')
-        .andWhere('table_type', 'BASE TABLE');
+        .whereRaw("table_schema = current_schema() AND table_type = 'BASE TABLE'");
 
     return result.map((row) => row.table_name);
 }

@@ -3,15 +3,18 @@ import knex, { Knex } from 'knex';
 import * as fs from 'fs';
 import type { ConnectionOptions } from 'tls'
 
+export const PUBLIC_SCHEMA = 'public';
+
 interface DatabaseContext {
     db: Knex;
+    schema: string; 
     batchSize: number;
     maxRetries: number;
     initialRetryDelay: number;
 }
 
 // Factory function to create a database context
-const createDatabaseContext = (database: Database): DatabaseContext => {
+const createDatabaseContext = (database: Database, schema: string): DatabaseContext => {
     const { connectionString, ssl, ...rest } = database;
 
     let sslConfig: ConnectionOptions | boolean = false;
@@ -30,9 +33,10 @@ const createDatabaseContext = (database: Database): DatabaseContext => {
             connectionString,
             ssl: sslConfig,
         },
+        searchPath: [schema],
     });
 
-    return { db, ...rest }
+    return { db, schema, ...rest }
 }
 
 export { createDatabaseContext }

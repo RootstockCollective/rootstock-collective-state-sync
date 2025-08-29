@@ -10,14 +10,14 @@ const main = async () => {
   try {
     const config = getConfig();
 
-    const { logLevel, productionMode } = config.app;
+    const { logLevel, productionMode, initializeDb } = config.app;
 
     log.setLevel(logLevel);
 
     const context = createContexts(config);
 
     // Create database schema
-    const entities = await createDb(context, config.app);
+    const entities = await createDb(context, productionMode, initializeDb);
 
     // Initial sync of entities
     await syncEntities(context, entities);
