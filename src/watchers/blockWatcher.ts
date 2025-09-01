@@ -7,18 +7,21 @@ import { AppContext } from '../context/types';
 import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
 import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
+import { createNewProposalStrategy, createProposalStateStrategy} from "./strategies";
 
 
 const createBlockHandlerWithStrategies = async (
   context: AppContext,
-  client: PublicClient
+  client: PublicClient,
 ) => {
   const strategies: ChangeStrategy[] = [
     createRevertReorgsStrategy(),
     blockChangeLogStrategy,
+    createNewProposalStrategy(),
+    createProposalStateStrategy(),
   ];
 
-  return async (): Promise<void> => {
+  return async (blockNumber: bigint | null): Promise<void> => {
     // Run strategies sequentially to avoid race conditions on database updates
     let totalProcessed = 0;
 
@@ -26,7 +29,8 @@ const createBlockHandlerWithStrategies = async (
       try {
         const processed = await strategy.detectAndProcess({
           context: context,
-          client: client
+          client: client,
+          blockNumber
         });
         if (processed) {
           log.info(`Strategy ${strategy.name} processed changes successfully`);
@@ -55,7 +59,7 @@ const watchBlocks = async (
   return client.watchBlocks({
     onBlock: async (block: Block) => {
       log.info(`Processing block ${block.number}`);
-      await handleBlockWithStrategies();
+      await handleBlockWithStrategies(block.number);
     },
     emitMissed: true,
     pollingInterval: 1000,

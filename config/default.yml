@@ -7,9 +7,13 @@ database:
   maxRetries: 3
   initialRetryDelay: 1000
   ssl: true
-subgraphProvider:
-  url: "https://gateway.thegraph.com/api"
-  maxRowsPerRequest: 1000
+subgraphProviders:
+  collective-rewards:
+    url: "https://gateway.thegraph.com/api"
+    maxRowsPerRequest: 1000
+  governance:
+    url: "https://gateway.thegraph.com/api"
+    maxRowsPerRequest: 1000
 entities:
   - name: LastProcessedBlock
     columns:
@@ -23,7 +27,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
-  
+    subgraphProvider: "collective-rewards"
   - name: BlockChangeLog
     columns:
       - name: id
@@ -36,6 +40,7 @@ entities:
         type: [String]
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BackerStakingHistory
     columns:
       - name: id
@@ -50,6 +55,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: GaugeStakingHistory
     columns:
       - name: id
@@ -68,6 +74,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: Builder
     columns:
       - name: id
@@ -84,6 +91,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BackerRewardPercentage
     columns:
       - name: id
@@ -98,6 +106,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BuilderState
     columns:
       - name: id
@@ -118,6 +127,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: GaugeToBuilder
     columns:
       - name: id
@@ -126,6 +136,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BuilderRewardsClaimed
     columns:
       - name: id
@@ -138,6 +149,7 @@ entities:
         type: BigInt
     primaryKey:
         - id
+    subgraphProvider: "collective-rewards"
   - name: Backer
     columns:
       - name: id
@@ -148,6 +160,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BackersRewardsClaimed
     columns:
       - name: id
@@ -160,6 +173,7 @@ entities:
         type: Backer
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BackerToBuilder
     columns:
       - name: id
@@ -174,6 +188,7 @@ entities:
         type: BuilderState
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: BackerToBuilderRewardsClaimed
     columns:
       - name: id
@@ -186,6 +201,7 @@ entities:
         type: BackerToBuilder
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: Cycle
     columns:
       - name: id
@@ -204,6 +220,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: ContractConfig
     columns:
       - name: id
@@ -222,6 +239,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: GlobalMetric
     columns:
       - name: id
@@ -234,6 +252,7 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
   - name: DailyAllocation
     columns:
       - name: id
@@ -244,3 +263,75 @@ entities:
         type: BigInt
     primaryKey:
       - id
+    subgraphProvider: "collective-rewards"
+  - name: Account
+    columns:
+      - name: id
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
+  - name: Proposal
+    columns:
+      - name: id
+        type: Bytes
+      - name: proposalId
+        type: Bytes
+      - name: description
+        type: String
+      - name: votesFor
+        type: BigInt
+      - name: votesAgainst
+        type: BigInt
+      - name: votesAbstains
+        type: BigInt
+      - name: voteEnd
+        type: BigInt
+      - name: voteStart
+        type: BigInt
+      - name: quorum
+        type: BigInt
+      - name: state
+        type: String
+      - name: rawState
+        type: Integer
+      - name: createdAt
+        type: BigInt
+      - name: createdAtBlock
+        type: BigInt
+      - name: signatures
+        type: [Bytes]
+      - name: targets
+        type: [Bytes]
+      - name: values
+        type: [BigInt]
+      - name: calldatas
+        type: [Bytes]
+      - name: proposer
+        type: Account
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
+  - name: VoteCast
+    columns:
+      - name: id
+        type: Bytes
+      - name: voter
+        type: Account
+      - name: proposal
+        type: Proposal
+      - name: support
+        type: Integer
+      - name: weight
+        type: BigInt
+      - name: reason
+        type: String
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "governance"

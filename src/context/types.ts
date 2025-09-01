@@ -6,7 +6,7 @@ import { GraphQlContext } from './subgraphProvider';
 interface AppContext {
     schema: DatabaseSchema;
     dbContext: DatabaseContext;
-    graphqlContext: GraphQlContext;
+    graphqlContexts: Record<string, GraphQlContext>;
     config: Config;
 }
 

@@ -20,9 +20,20 @@ const detectAndProcess = async (params: {
   const { blockNumber: lastStoredBlockNumber, id: lastStoredBlockHash } = await getLastProcessedBlock(context.dbContext.db);
   const fromBlock = BigInt(lastStoredBlockNumber);
 
+  const subgraphName = context.schema.entities.get(schemaName)?.subgraphProvider;
+  if (!subgraphName) {
+    log.error(`Subgraph context for ${schemaName} not found`);
+    return false;
+  }
+  const graphqlContext = context.graphqlContexts[subgraphName];
+  if (!graphqlContext) {
+    log.error(`Subgraph context for ${subgraphName} not found`);
+    return false;
+  }
+
   // Query all block change logs since the last processed block
   const changeLogQuery = createEntityQuery(context.schema, schemaName, {
-    first: context.graphqlContext.pagination.maxRowsPerRequest,
+    first: graphqlContext.pagination.maxRowsPerRequest,
     order: {
       by: 'blockNumber',
       direction: 'desc'
@@ -33,7 +44,7 @@ const detectAndProcess = async (params: {
     withMetadata: true
   });
 
-  const results = await executeRequests(context.graphqlContext, [
+  const results = await executeRequests(graphqlContext, [
     changeLogQuery,
   ]);
   const { _meta: lastProcessedBlock } = results as EntityDataCollection<WithMetadata>;
