@@ -1,10 +1,10 @@
-import {ChangeStrategy, Proposal} from "./types";
-import {AppContext} from "../../context/types";
-import {Address, PublicClient} from "viem";
-import {DatabaseContext} from "../../context/db";
-import {GovernanceAbi} from "../../abis/GovernanceAbi";
-import { CONTRACT_NAMES, getContractAddress } from "../../handlers/contracts";
-import log from "loglevel";
+import { ChangeStrategy, Proposal } from './types';
+import { AppContext } from '../../context/types';
+import { Address, PublicClient } from 'viem';
+import { DatabaseContext } from '../../context/db';
+import { GovernanceAbi } from '../../abis/GovernanceAbi';
+import { CONTRACT_NAMES, getContractAddress } from '../../handlers/contracts';
+import log from 'loglevel';
 
 export enum ProposalState {
   Pending,
@@ -24,7 +24,7 @@ const getProposals = async (
   const { db } = dbContext;
   return db<Proposal>('Proposal').whereIn('rawState', 
     [ProposalState.Pending, ProposalState.Active, ProposalState.Succeeded, ProposalState.Queued]);
-}
+};
 
 const getProposalStatesViaMulticall = async (
   client: PublicClient,
@@ -66,21 +66,21 @@ const getProposalStatesViaMulticall = async (
   }
 
   return stateMap;
-}
+};
 
 const stateDescriptions: Record<ProposalState, string> = {
-  [ProposalState.Pending]: "Pending",
-  [ProposalState.Active]: "Active",
-  [ProposalState.Canceled]: "Canceled",
-  [ProposalState.Defeated]: "Defeated",
-  [ProposalState.Succeeded]: "Succeeded",
-  [ProposalState.Queued]: "Queued",
-  [ProposalState.Expired]: "Expired",
-  [ProposalState.Executed]: "Executed",
+  [ProposalState.Pending]: 'Pending',
+  [ProposalState.Active]: 'Active',
+  [ProposalState.Canceled]: 'Canceled',
+  [ProposalState.Defeated]: 'Defeated',
+  [ProposalState.Succeeded]: 'Succeeded',
+  [ProposalState.Queued]: 'Queued',
+  [ProposalState.Expired]: 'Expired',
+  [ProposalState.Executed]: 'Executed',
 };
 
 const getStateDescription = (rawState: ProposalState): string => {
-  return stateDescriptions[rawState] ?? "Unknown";
+  return stateDescriptions[rawState] ?? 'Unknown';
 };
 
 const createStrategy = (): ChangeStrategy => {
@@ -133,13 +133,13 @@ const createStrategy = (): ChangeStrategy => {
     log.info(`Updated ${updatedCount} proposals in block ${lastBlockNumber}`);
 
     return updatedCount > 0;
-  }
+  };
 
   return {
     name: 'ProposalState',
     detectAndProcess
   };
-}
+};
 
 export const createProposalStateStrategy = () => createStrategy();
 

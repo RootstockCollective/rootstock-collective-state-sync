@@ -1,11 +1,11 @@
-import {ChangeStrategy, Proposal} from "./types";
-import {AppContext} from "../../context/types";
-import {PublicClient} from "viem";
-import log from "loglevel";
-import {createEntityQuery} from "../../handlers/subgraphQueryBuilder";
-import {executeRequests} from "../../context/subgraphProvider";
-import {syncEntities} from "../../handlers/subgraphSyncer";
-import {DatabaseContext} from "../../context/db";
+import { ChangeStrategy, Proposal } from './types';
+import { AppContext } from '../../context/types';
+import { PublicClient } from 'viem';
+import log from 'loglevel';
+import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
+import { executeRequests } from '../../context/subgraphProvider';
+import { syncEntities } from '../../handlers/subgraphSyncer';
+import { DatabaseContext } from '../../context/db';
 
 const createStrategy = (): ChangeStrategy => {
 
@@ -21,7 +21,7 @@ const createStrategy = (): ChangeStrategy => {
     }
 
     return result[0].createdAtBlock;
-  }
+  };
 
   const detectAndProcess = async (params: {
     context: AppContext;
@@ -30,7 +30,7 @@ const createStrategy = (): ChangeStrategy => {
   }): Promise<boolean> => {
     const { context } = params;
     const lastProcessedBlock = await getLastProcessedBlock(context.dbContext);
-    const fromBlock = BigInt(lastProcessedBlock)
+    const fromBlock = BigInt(lastProcessedBlock);
 
     // Find the subgraph context for Proposal entity
     const proposalEntity = context.schema.entities.get('Proposal');
@@ -78,14 +78,14 @@ const createStrategy = (): ChangeStrategy => {
       return true;
     }
 
-    return true
-  }
+    return true;
+  };
 
   const strategy = {
     name: 'NewProposal',
     detectAndProcess
   };
   return strategy;
-}
+};
 
 export const createNewProposalStrategy = () => createStrategy();
