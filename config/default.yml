@@ -27,7 +27,7 @@ entities:
         type: Bytes
     primaryKey:
       - id
-  
+    subgraphProvider: "collective-rewards"
   - name: BlockChangeLog
     columns:
       - name: id
