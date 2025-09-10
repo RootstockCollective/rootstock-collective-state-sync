@@ -1,8 +1,11 @@
 name: "Runner version check"
 
 on:
+  push:
+    branches: [ "dependabot/github_actions/actions/checkout-5.0.0" ]
+  pull_request:
+    branches: [ "dependabot/github_actions/actions/checkout-5.0.0" ]
   workflow_dispatch:
-  
 # Declare default permissions as read only.
 permissions: read-all
 
