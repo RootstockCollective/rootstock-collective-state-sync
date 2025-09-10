@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:24-alpine@sha256:7aaba6b13a55a1d78411a1162c1994428ed039c6bbef7b1d9859c25ada1d7cc5 AS builder
+FROM node:24-alpine@sha256:be4d5e92ac68483ec71440bf5934865b4b7fcb93588f17a24d411d15f0204e4f AS builder
 WORKDIR /app
 
 COPY package*.json ./
@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Runtime
-FROM node:24-alpine@sha256:7aaba6b13a55a1d78411a1162c1994428ed039c6bbef7b1d9859c25ada1d7cc5
+FROM node:24-alpine@sha256:be4d5e92ac68483ec71440bf5934865b4b7fcb93588f17a24d411d15f0204e4f
 WORKDIR /app
 
 COPY --from=builder /app/package*.json ./
