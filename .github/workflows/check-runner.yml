@@ -1,0 +1,16 @@
+name: "Runner version check"
+
+on:
+  workflow_dispatch:
+  
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  check-runner-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show runner version
+        run: echo "Runner version: ${{ runner.tool_cache }}"
+      - name: Check runner binary version
+        run: actions-runner/bin/Runner.Listener --version
