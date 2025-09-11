@@ -3,8 +3,11 @@ app:
   initializeDb: false
 blockchain:
   network: "testnet"
-subgraphProvider:
-  id: "deployments/id/QmUMDSkk6A9XT6FGctrgzffk98us5gBrj5AHwugzRPXUeT"
+subgraphProviders:
+  collective-rewards:
+    id: "deployments/id/QmUMDSkk6A9XT6FGctrgzffk98us5gBrj5AHwugzRPXUeT"
+  governance:
+    id: "deployments/id/QmQ3awLb8QCX2yj9KHQbo8Ke2nvhRgjjrd3N4jAjP7ACwK"
 contracts:
   - name: BackersManager
     address: "0x7c2D9C109919B50b9B00Ae173a0398b5EabEE17A"
@@ -12,3 +15,5 @@ contracts:
     address: "0x543782852C8D5AD54022CaB60FE46578f4141405"
   - name: RewardDistributor
     address: "0x7DbE5169BE874A9C994201b617f8D0378e27cbd9"
+  - name: Governor
+    address: "0xb77ab0075e9805efa82040bed73368d988a2d9c2"
