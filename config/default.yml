@@ -212,9 +212,13 @@ entities:
         type: BigInt
       - name: onDistributionPeriod
         type: Boolean
-      - name: cycleStart
+      - name: currentCycleStart
         type: BigInt
-      - name: cycleDuration
+      - name: currentCycleDuration
+        type: BigInt
+      - name: previousCycleStart
+        type: BigInt
+      - name: previousCycleDuration
         type: BigInt
       - name: distributionDuration
         type: BigInt
