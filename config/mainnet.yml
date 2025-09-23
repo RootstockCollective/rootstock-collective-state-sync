@@ -1,6 +1,6 @@
 app:
   productionMode: true
-  initializeDb: false
+  initializeDb: true
 blockchain:
   network: "mainnet"
 subgraphProviders:

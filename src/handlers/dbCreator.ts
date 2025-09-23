@@ -75,10 +75,6 @@ const createDb = async (context: AppContext, productionMode: boolean, initialize
 
     return await db.transaction(async (trx) => {
         if (initializeDb) {
-            if (productionMode) {
-                throw new Error('Cannot initialize database in production mode. Set `initializeDb: false` in app config.');
-            }
-
             // Initialize mode: Drop and recreate all tables
             log.info('Initializing database: dropping and recreating all tables');
 
