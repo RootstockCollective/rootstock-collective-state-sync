@@ -1,11 +1,11 @@
 app:
   productionMode: true
-  initializeDb: false
+  initializeDb: true
 blockchain:
   network: "testnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmbW4VTVMkmZdQtLxXnmANG2359SYGeePFnfALDnYbncuS"
+    id: "deployments/id/QmTYpTAhVjStYPxd31SKPZMDF8k5qpWPCSouFyuVLENMZy"
   governance:
     id: "deployments/id/QmZjtZXwUHjVw9pFbdDXZ7kDp3G8yY6fr7gNT6h8ZrcPki"
 contracts:
