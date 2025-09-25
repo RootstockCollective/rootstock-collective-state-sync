@@ -30,6 +30,7 @@ interface LastProcessedBlock {
 }
 interface Proposal {
   id: string;
+  proposalId: string;
   voteStart: bigint;
   voteEnd: bigint;
   votesFor: bigint;
