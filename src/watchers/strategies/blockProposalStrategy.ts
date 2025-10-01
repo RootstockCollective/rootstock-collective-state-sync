@@ -7,6 +7,8 @@ import { executeRequests } from '../../context/subgraphProvider';
 import { syncEntities } from '../../handlers/subgraphSyncer';
 import { DatabaseContext } from '../../context/db';
 
+const MAINNET_VOTING_PERIOD_BLOCKS = 25000n
+
 const createStrategy = (): ChangeStrategy => {
 
   const getLastProcessedBlock = async (
@@ -29,8 +31,12 @@ const createStrategy = (): ChangeStrategy => {
     blockNumber: bigint | null;
   }): Promise<boolean> => {
     const { context } = params;
-    const lastProcessedBlock = await getLastProcessedBlock(context.dbContext);
-    const fromBlock = BigInt(lastProcessedBlock);
+    if (!params.blockNumber) {
+      log.error(`blockProposalStrategy->detectAndProcess: No block number provided, skipping processing`);
+      return false;
+    }
+    const fromBlock = params.blockNumber - MAINNET_VOTING_PERIOD_BLOCKS;
+    log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`)
 
     // Find the subgraph context for Proposal entity
     const proposalEntity = context.schema.entities.get('Proposal');
@@ -67,7 +73,7 @@ const createStrategy = (): ChangeStrategy => {
     }
 
     // Process the changes specific to this strategy
-    log.info(`${strategy.name}: Processing ${proposals.length} entities: ${proposals.join(', ')}`);
+    log.info(`blockProposalStrategy->detectAndProcess: Processing ${proposals.length} entities: ${proposals.map(p => p.proposalId).join(', ')}`);
 
     // Add Proposal itself to the entities to sync
     const allEntitiesToSync = ['Account','Proposal','VoteCast'];

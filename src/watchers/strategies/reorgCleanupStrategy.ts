@@ -45,7 +45,7 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
       const entities = await createDb(newContext, IS_PRODUCTION_MODE, SHOULD_INITIALIZE_DB);
 
       // Initial sync of entities
-      await syncEntities(newContext, entities);
+      await syncEntities(newContext, entities.filter(entity => entity !== 'LastProcessedBlock'));
 
       await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
 
