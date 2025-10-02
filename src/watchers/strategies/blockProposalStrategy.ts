@@ -5,25 +5,12 @@ import log from 'loglevel';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
 import { executeRequests } from '../../context/subgraphProvider';
 import { syncEntities } from '../../handlers/subgraphSyncer';
-import { DatabaseContext } from '../../context/db';
 
 const MAINNET_VOTING_PERIOD_BLOCKS = 25000n
+const BLOCK_INTERVAL_THRESHOLD = 2n; // Minimum blocks that must pass
+const LAST_PROCESSED_BLOCK_KEY = 'lastProcessedBlock';
 
 const createStrategy = (): ChangeStrategy => {
-
-  const getLastProcessedBlock = async (
-    dbContext: DatabaseContext
-  ): Promise<bigint> => {
-
-    const { db } = dbContext;
-
-    const result = await db<Proposal>('Proposal').orderBy('createdAtBlock', 'desc').limit(1);
-    if (result.length === 0) {
-      return 0n;
-    }
-
-    return result[0].createdAtBlock;
-  };
 
   const detectAndProcess = async (params: {
     context: AppContext;
@@ -35,6 +22,18 @@ const createStrategy = (): ChangeStrategy => {
       log.error(`blockProposalStrategy->detectAndProcess: No block number provided, skipping processing`);
       return false;
     }
+
+    // Get last processed block from Variables table
+    const { db } = context.dbContext;
+    const lastBlockRecord = await db('Variables').where('key', LAST_PROCESSED_BLOCK_KEY).first();
+    const lastProcessedBlock = lastBlockRecord ? BigInt(lastBlockRecord.value) : 0n;
+
+    // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
+    if (lastProcessedBlock > 0n && params.blockNumber < (lastProcessedBlock + BLOCK_INTERVAL_THRESHOLD)) {
+      log.info(`blockProposalStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${lastProcessedBlock})`);
+      return false;
+    }
+
     const fromBlock = params.blockNumber - MAINNET_VOTING_PERIOD_BLOCKS;
     log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`)
 
@@ -81,6 +80,15 @@ const createStrategy = (): ChangeStrategy => {
 
     if (validEntities.length > 0) {
       await syncEntities(context, validEntities, fromBlock);
+
+      // Store current block number in Variables table
+      await db('Variables')
+        .insert({ key: LAST_PROCESSED_BLOCK_KEY, value: params.blockNumber.toString() })
+        .onConflict('key')
+        .merge();
+
+      log.info(`blockProposalStrategy->detectAndProcess: Stored last processed block: ${params.blockNumber}`);
+
       return true;
     }
 
