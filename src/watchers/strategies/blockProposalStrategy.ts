@@ -7,8 +7,9 @@ import { executeRequests } from '../../context/subgraphProvider';
 import { syncEntities } from '../../handlers/subgraphSyncer';
 
 const MAINNET_VOTING_PERIOD_BLOCKS = 25000n
-const BLOCK_INTERVAL_THRESHOLD = 2n; // Minimum blocks that must pass
-const LAST_PROCESSED_BLOCK_KEY = 'lastProcessedBlock';
+const BLOCK_INTERVAL_THRESHOLD = 3n; // Minimum blocks that must pass
+
+let LAST_PROCESSED_BLOCK = 0n;
 
 const createStrategy = (): ChangeStrategy => {
 
@@ -23,14 +24,10 @@ const createStrategy = (): ChangeStrategy => {
       return false;
     }
 
-    // Get last processed block from Variables table
-    const { db } = context.dbContext;
-    const lastBlockRecord = await db('Variables').where('key', LAST_PROCESSED_BLOCK_KEY).first();
-    const lastProcessedBlock = lastBlockRecord ? BigInt(lastBlockRecord.value) : 0n;
-
     // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
-    if (lastProcessedBlock > 0n && params.blockNumber < (lastProcessedBlock + BLOCK_INTERVAL_THRESHOLD)) {
-      log.info(`blockProposalStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${lastProcessedBlock})`);
+    if (LAST_PROCESSED_BLOCK > 0n && params.blockNumber < (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD)) {
+      const blocksUntilNext = (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD) - params.blockNumber;
+      log.info(`blockProposalStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`);
       return false;
     }
 
@@ -81,11 +78,8 @@ const createStrategy = (): ChangeStrategy => {
     if (validEntities.length > 0) {
       await syncEntities(context, validEntities, fromBlock);
 
-      // Store current block number in Variables table
-      await db('Variables')
-        .insert({ key: LAST_PROCESSED_BLOCK_KEY, value: params.blockNumber.toString() })
-        .onConflict('key')
-        .merge();
+      // Update in-memory last processed block
+      LAST_PROCESSED_BLOCK = params.blockNumber;
 
       log.info(`blockProposalStrategy->detectAndProcess: Stored last processed block: ${params.blockNumber}`);
 

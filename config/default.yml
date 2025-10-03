@@ -339,12 +339,3 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "governance"
-  - name: Variables
-    columns:
-      - name: key
-        type: String
-      - name: value
-        type: String
-    primaryKey:
-      - key
-    subgraphProvider: "collective-rewards"
