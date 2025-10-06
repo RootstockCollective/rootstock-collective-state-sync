@@ -7,6 +7,8 @@ database:
   maxRetries: 3
   initialRetryDelay: 1000
   ssl: true
+blockchain:
+  blockIntervalThreshold: 3
 subgraphProviders:
   collective-rewards:
     url: "https://gateway.thegraph.com/api"
