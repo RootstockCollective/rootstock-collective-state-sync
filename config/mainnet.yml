@@ -3,6 +3,7 @@ app:
   initializeDb: true
 blockchain:
   network: "mainnet"
+  blockIntervalThreshold: 1
 subgraphProviders:
   collective-rewards:
     id: "deployments/id/QmUkydakVyQexGfbUubdz58M7Bw2uiAAd1KvUNiEBj4jJh"

@@ -5,25 +5,13 @@ import log from 'loglevel';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
 import { executeRequests } from '../../context/subgraphProvider';
 import { syncEntities } from '../../handlers/subgraphSyncer';
-import { DatabaseContext } from '../../context/db';
+import { getConfig } from '../../config/config';
 
 const MAINNET_VOTING_PERIOD_BLOCKS = 25000n
 
+let LAST_PROCESSED_BLOCK = 0n;
+
 const createStrategy = (): ChangeStrategy => {
-
-  const getLastProcessedBlock = async (
-    dbContext: DatabaseContext
-  ): Promise<bigint> => {
-
-    const { db } = dbContext;
-
-    const result = await db<Proposal>('Proposal').orderBy('createdAtBlock', 'desc').limit(1);
-    if (result.length === 0) {
-      return 0n;
-    }
-
-    return result[0].createdAtBlock;
-  };
 
   const detectAndProcess = async (params: {
     context: AppContext;
@@ -35,6 +23,16 @@ const createStrategy = (): ChangeStrategy => {
       log.error(`blockProposalStrategy->detectAndProcess: No block number provided, skipping processing`);
       return false;
     }
+
+    const BLOCK_INTERVAL_THRESHOLD = BigInt(getConfig().blockchain.blockIntervalThreshold);
+
+    // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
+    if (LAST_PROCESSED_BLOCK > 0n && params.blockNumber < (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD)) {
+      const blocksUntilNext = (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD) - params.blockNumber;
+      log.info(`blockProposalStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`);
+      return false;
+    }
+
     const fromBlock = params.blockNumber - MAINNET_VOTING_PERIOD_BLOCKS;
     log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`)
 
@@ -81,6 +79,12 @@ const createStrategy = (): ChangeStrategy => {
 
     if (validEntities.length > 0) {
       await syncEntities(context, validEntities, fromBlock);
+
+      // Update in-memory last processed block
+      LAST_PROCESSED_BLOCK = params.blockNumber;
+
+      log.info(`blockProposalStrategy->detectAndProcess: Stored last processed block: ${params.blockNumber}`);
+
       return true;
     }
 
