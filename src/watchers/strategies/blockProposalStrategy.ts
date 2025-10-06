@@ -25,7 +25,7 @@ const createStrategy = (): ChangeStrategy => {
     }
 
     const BLOCK_INTERVAL_THRESHOLD = BigInt(getConfig().blockchain.blockIntervalThreshold);
-    console.log(28, { BLOCK_INTERVAL_THRESHOLD })
+
     // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
     if (LAST_PROCESSED_BLOCK > 0n && params.blockNumber < (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD)) {
       const blocksUntilNext = (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD) - params.blockNumber;
