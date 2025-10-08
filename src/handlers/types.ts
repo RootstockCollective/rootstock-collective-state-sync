@@ -10,37 +10,37 @@ interface ColumnTypeConfig {
 }
 
 const columnTypeConfigs: Record<ColumnType, ColumnTypeConfig> = {
-    Boolean: {
-        sqlType: 'BOOLEAN',
-        knexHandler: (table, name) => table.boolean(name).notNullable()
-    },
-    BigInt: {
-        sqlType: 'NUMERIC',
-        knexHandler: (table, name) => table.decimal(name, 78, 0).notNullable()
-    },
-    Bytes: {
-        sqlType: 'BYTEA',
-        knexHandler: (table, name) => table.binary(name).notNullable()
-    },
-    String: {
-        sqlType: 'TEXT',
-        knexHandler: (table, name) => table.text(name).notNullable()
-    },
-    Integer: {
-        sqlType: 'INTEGER',
-        knexHandler: (table, name) => table.integer(name).notNullable()
-    }
+  Boolean: {
+    sqlType: 'BOOLEAN',
+    knexHandler: (table, name) => table.boolean(name).notNullable()
+  },
+  BigInt: {
+    sqlType: 'NUMERIC',
+    knexHandler: (table, name) => table.decimal(name, 78, 0).notNullable()
+  },
+  Bytes: {
+    sqlType: 'BYTEA',
+    knexHandler: (table, name) => table.binary(name).notNullable()
+  },
+  String: {
+    sqlType: 'TEXT',
+    knexHandler: (table, name) => table.text(name).notNullable()
+  },
+  Integer: {
+    sqlType: 'INTEGER',
+    knexHandler: (table, name) => table.integer(name).notNullable()
+  }
 } as const;
 
 const isColumnType = (type: string): type is ColumnType =>
-    Object.keys(columnTypeConfigs).includes(type);
+  Object.keys(columnTypeConfigs).includes(type);
 
 const isArrayColumnType = (type: string | string[]): type is ArrayColumnType => {
-    return Array.isArray(type) &&
+  return Array.isArray(type) &&
         type.length === 1 &&
-        typeof type[0] === "string" &&
+        typeof type[0] === 'string' &&
         isColumnType(type[0]);
-}
+};
 
 type EntityRecord = unknown & { id: string };
 

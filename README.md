@@ -1,5 +1,8 @@
 # Rootstock Collective State Sync
 
+[![Test & Coverage](https://github.com/RootstockCollective/rootstock-collective-state-sync/actions/workflows/test.yml/badge.svg)](https://github.com/RootstockCollective/rootstock-collective-state-sync/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/RootstockCollective/rootstock-collective-state-sync/branch/main/graph/badge.svg)](https://codecov.io/gh/RootstockCollective/rootstock-collective-state-sync)
+
 A state synchronization engine for the [Rootstock Collective](https://www.rootstockcollective.xyz/) dApp. This service continuously monitors smart contracts, retrieves on-chain state, aggregates external data sources, and stores the results in a PostgreSQL database for fast, reliable, and queryable access by client applications.
 
 ## 🚀 Features
@@ -110,6 +113,9 @@ npm run start
 - `npm start` - Start the application in development mode
 - `npm run build` - Build TypeScript to JavaScript
 - `npm run clean` - Remove build artifacts
+- `npm test` - Run all tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
 
 ## ⚙️ Configuration
 
@@ -185,6 +191,35 @@ To create a new strategy:
 1. Create a new file in `src/watchers/strategies/`
 2. Implement the strategy interface defined in `src/watchers/strategies/types.ts`
 3. Register the strategy in the block watcher
+
+## 🧪 Testing
+
+This project uses Node.js's native test runner (Node 20+). No external test frameworks are required.
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+Coverage reports are generated using `c8` and output to the `coverage/` directory. Tests are co-located with source files using the `.test.ts` extension. See [TESTING.md](./TESTING.md) for detailed testing guidelines.
+
+### CI/CD & Security
+
+Tests and coverage reports are automatically run on every push and pull request via GitHub Actions. The pipeline includes:
+
+- ✅ **Testing** on Node.js v 22.x
+- 🔒 **Security scanning** (dependency review, secret detection, SAST)
+- 📊 **Coverage reporting** with Codecov integration
+- 🤖 **Automated updates** via Dependabot
+- 🔐 **Secure workflows** with minimal permissions and pinned actions
+
+All GitHub Actions are pinned to specific commit SHAs for security and reliability.
 
 ## 🔧 Development
 

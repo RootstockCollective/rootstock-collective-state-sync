@@ -1,17 +1,58 @@
 version: 2
 updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: github-actions
-    directory: /
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: daily
-  # Maintain dependencies for npm
-  - package-ecosystem: npm
-    directory: /
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "RootstockCollective/maintainers"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      # Group all TypeScript and ESLint updates together
+      development-dependencies:
+        patterns:
+          - "typescript*"
+          - "eslint*"
+          - "@types/*"
+          - "ts-node"
+          - "tsx"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group test dependencies
+      test-dependencies:
+        patterns:
+          - "c8"
+          - "@jest/*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Ignore major version updates for stable dependencies
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: daily
-  # Maintain dependencies for Docker
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: daily
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "RootstockCollective/maintainers"
+    labels:
+      - "github-actions"
+      - "security"
+    commit-message:
+      prefix: "ci"

@@ -17,5 +17,16 @@ export default tseslint.config(
       'object-curly-spacing': ['error', 'always'],
       'eol-last': [2, 'always'],
     }
+  },
+  // Relaxed rules for test files
+  {
+    files: ['**/*.test.ts', '**/test-helpers/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+    }
   }
 );

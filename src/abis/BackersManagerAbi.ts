@@ -1011,4 +1011,4 @@ export const BackersManagerAbi = [
     name: 'UnequalLengths',
     inputs: [],
   },
-] as const
+] as const;

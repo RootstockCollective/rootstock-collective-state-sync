@@ -726,4 +726,4 @@ export const GaugeAbi = [
       },
     ],
   },
-] as const
+] as const;

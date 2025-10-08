@@ -1,6 +1,6 @@
-import { ColumnType } from "../handlers/types";
-import { SupportedChain } from "./chain";
-import log from "loglevel";
+import { ColumnType } from '../handlers/types';
+import { SupportedChain } from './chain';
+import log from 'loglevel';
 
 interface Config {
     app: App;
@@ -55,4 +55,4 @@ interface Entity {
     subgraphProvider: string;
 }
 
-export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity }
+export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity };

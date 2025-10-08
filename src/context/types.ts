@@ -10,4 +10,4 @@ interface AppContext {
     config: Config;
 }
 
-export type { AppContext }
+export type { AppContext };

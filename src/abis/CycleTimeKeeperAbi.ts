@@ -319,4 +319,4 @@ export const CycleTimeKeeperAbi = [
       },
     ],
   },
-] as const
+] as const;

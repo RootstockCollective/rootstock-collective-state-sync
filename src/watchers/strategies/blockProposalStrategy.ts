@@ -7,7 +7,7 @@ import { executeRequests } from '../../context/subgraphProvider';
 import { syncEntities } from '../../handlers/subgraphSyncer';
 import { getConfig } from '../../config/config';
 
-const MAINNET_VOTING_PERIOD_BLOCKS = 25000n
+const MAINNET_VOTING_PERIOD_BLOCKS = 25000n;
 
 let LAST_PROCESSED_BLOCK = 0n;
 
@@ -20,7 +20,7 @@ const createStrategy = (): ChangeStrategy => {
   }): Promise<boolean> => {
     const { context } = params;
     if (!params.blockNumber) {
-      log.error(`blockProposalStrategy->detectAndProcess: No block number provided, skipping processing`);
+      log.error('blockProposalStrategy->detectAndProcess: No block number provided, skipping processing');
       return false;
     }
 
@@ -34,7 +34,7 @@ const createStrategy = (): ChangeStrategy => {
     }
 
     const fromBlock = params.blockNumber - MAINNET_VOTING_PERIOD_BLOCKS;
-    log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`)
+    log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`);
 
     // Find the subgraph context for Proposal entity
     const proposalEntity = context.schema.entities.get('Proposal');

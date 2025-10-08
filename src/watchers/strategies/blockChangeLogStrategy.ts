@@ -64,7 +64,7 @@ const detectAndProcess = async (params: {
     })
     .onConflict('id')
     .merge()
-    .on('query', function (data: any) {
+    .on('query', function (data: unknown) {
       log.debug(`${STRATEGY_NAME}: Updated last processed block to ${lastProcessedBlock.block.hash} at number ${lastProcessedBlock.block.number}`, data);
     })
     .then((v) => {
@@ -113,7 +113,7 @@ const detectAndProcess = async (params: {
   }
 
   return false;
-}
+};
 
 export default {
   name: STRATEGY_NAME,
