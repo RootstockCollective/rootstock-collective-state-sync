@@ -20,6 +20,6 @@ COPY --from=builder /app/config ./config/
 RUN apk add --no-cache wget && \
     wget -O rds-ca-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
-RUN npm install --omit=dev
+RUN npm ci
 
 CMD ["node", "dist/app/main.js"]
