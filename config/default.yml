@@ -223,7 +223,7 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
-  - name: CycleRewardsAmount
+  - name: CycleRewardPerToken
     columns:
       - name: id
         type: Bytes
@@ -268,7 +268,7 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
-  - name: GlobalDefaultAmount
+  - name: GlobalDistributionPerToken
     columns:
       - name: id
         type: Bytes
