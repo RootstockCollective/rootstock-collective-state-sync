@@ -208,10 +208,6 @@ entities:
     columns:
       - name: id
         type: Bytes
-      - name: rewardsERC20
-        type: BigInt
-      - name: rewardsRBTC
-        type: BigInt
       - name: onDistributionPeriod
         type: Boolean
       - name: currentCycleStart
@@ -224,6 +220,19 @@ entities:
         type: BigInt
       - name: distributionDuration
         type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
+  - name: CycleRewardPerToken
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: cycle
+        type: Cycle
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
@@ -256,6 +265,19 @@ entities:
         type: BigInt
       - name: totalPotentialReward
         type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
+  - name: GlobalDistributionPerToken
+    columns:
+      - name: id
+        type: Bytes
+      - name: token
+        type: Bytes
+      - name: amount
+        type: BigInt
+      - name: globalMetric
+        type: GlobalMetric
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
