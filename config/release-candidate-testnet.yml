@@ -5,9 +5,9 @@ blockchain:
   network: "testnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmTDjg5qHhFp1cCG8WVgNTuXmRucyaHEmR6Lkvpox1JG2t"
+    id: "deployments/id/QmdKRP8SbVZA5PvTWkNxHB6LvVcXcFeyQEc9dxu4ccpdo4"
   governance:
-    id: "deployments/id/QmQ3awLb8QCX2yj9KHQbo8Ke2nvhRgjjrd3N4jAjP7ACwK"
+    id: "deployments/id/QmShUXmfS9GVtkowELfSK3XMuWMsfLpVA5LKeXGVth9Wrv"
 contracts:
   - name: BackersManager
     address: "0x7c2D9C109919B50b9B00Ae173a0398b5EabEE17A"
