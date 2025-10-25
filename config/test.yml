@@ -1,0 +1,38 @@
+# Test configuration - used for running tests
+app:
+  initializeDb: false
+  logLevel: "error"  # Reduce noise during tests
+  productionMode: false
+
+database:
+  connectionString: "postgresql://test:test@localhost:5432/test_db"
+  batchSize: 100
+  maxRetries: 1
+  initialRetryDelay: 100
+  ssl: false
+
+blockchain:
+  network: "testnet"
+  blockIntervalThreshold: 1
+
+subgraphProviders:
+  collective-rewards:
+    url: "http://localhost:8000"
+    maxRowsPerRequest: 10
+    id: "test-collective-rewards"
+    apiKey: "test-api-key"
+  governance:
+    url: "http://localhost:8001"
+    maxRowsPerRequest: 10
+    id: "test-governance"
+    apiKey: "test-api-key"
+
+contracts:
+  - name: BackersManager
+    address: "0x0000000000000000000000000000000000000001"
+  - name: BuilderRegistry
+    address: "0x0000000000000000000000000000000000000002"
+  - name: RewardDistributor
+    address: "0x0000000000000000000000000000000000000003"
+  - name: Governor
+    address: "0x0000000000000000000000000000000000000004"

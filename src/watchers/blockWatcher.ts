@@ -7,7 +7,7 @@ import { AppContext } from '../context/types';
 import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
 import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
-import { createNewProposalStrategy, createProposalStateStrategy} from "./strategies";
+import { createNewProposalStrategy, createProposalStateStrategy } from './strategies';
 
 
 const createBlockHandlerWithStrategies = async (
@@ -45,8 +45,8 @@ const createBlockHandlerWithStrategies = async (
     if (totalProcessed > 0) {
       log.info(`Processed changes from ${totalProcessed} strategies`);
     }
-  }
-}
+  };
+};
 
 const watchBlocks = async (
   context: AppContext,
@@ -64,7 +64,7 @@ const watchBlocks = async (
     emitMissed: true,
     pollingInterval: 1000,
   });
-}
+};
 
 export { watchBlocks };
 

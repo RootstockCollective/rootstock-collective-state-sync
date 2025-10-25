@@ -1198,4 +1198,4 @@ export const BuilderRegistryAbi = [
       },
     ],
   },
-] as const
+] as const;

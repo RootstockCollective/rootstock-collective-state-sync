@@ -1,0 +1,17 @@
+{
+  "all": true,
+  "src": ["src"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.d.ts",
+    "src/abis/**",
+    "dist/**",
+    "node_modules/**"
+  ],
+  "reporter": [
+    "text",
+    "html",
+    "lcov"
+  ]
+}
+

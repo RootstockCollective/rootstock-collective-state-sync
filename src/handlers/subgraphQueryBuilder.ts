@@ -17,7 +17,8 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
   }
 
   const queryParts = requests.map(({ request: { query }, index }) => {
-    const queryName = query.split('(')[0].trim();
+    // Extract query name: split by '(' for queries with args, or '{' for queries without args
+    const queryName = query.split(/[({]/)[0].trim();
     return `${queryName}_${index}: ${query}`;
   });
 
@@ -39,7 +40,7 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
     ${queryParts.join('\n    ')}
     ${metadataQuery}
   }`;
-}
+};
 
 type FilterValue = string | bigint | number | { [key: string]: FilterValue };
 interface QueryOptions {
@@ -59,11 +60,11 @@ interface QueryOptions {
 const createEntityQuery = (
   schema: DatabaseSchema,
   entityName: string,
-  options: QueryOptions = {}
+  options?: QueryOptions
 ): GraphQLRequest => {
   const query = generateQuery(schema, entityName, options);
-  return { entityName, query, withMetadata: options.withMetadata }
-}
+  return { entityName, query, withMetadata: options?.withMetadata ?? false };
+};
 
 /**
  * Creates multiple GraphQL request objects for multiple entities with the same options
@@ -71,10 +72,10 @@ const createEntityQuery = (
 const createEntityQueries = (
   schema: DatabaseSchema,
   entityNames: string[],
-  options: QueryOptions = {}
+  options?: QueryOptions
 ): GraphQLRequest[] => {
-  return entityNames.map(entityName => createEntityQuery(schema, entityName, options));
-}
+  return entityNames.map(entityName => createEntityQuery(schema, entityName, options ?? {}));
+};
 
 /**
  * Generates a GraphQL query for a specific entity with given options
@@ -82,15 +83,15 @@ const createEntityQueries = (
 const generateQuery = (
   schema: DatabaseSchema,
   entityName: string,
-  options: QueryOptions = {}
+  options?: QueryOptions
 ): string => {
   const entity = schema.entities.get(entityName);
   if (!entity) {
     throw new Error(`Entity '${entityName}' not found in schema`);
   }
 
-  return buildListQuery(entity, schema, options);
-}
+  return buildListQuery(entity, schema, options ?? {});
+};
 
 /**
  * Builds a GraphQL query for fetching multiple entities (list query)
@@ -106,7 +107,7 @@ const buildListQuery = (entity: Entity, schema: DatabaseSchema, options: QueryOp
   return `${queryName}${argsString} {
       ${fields}
     }`;
-}
+};
 
 /**
  * Builds the field selection for a GraphQL query based on entity columns
@@ -121,22 +122,50 @@ const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string 
       return column.name;
     })
     .join('\n      ');
-}
+};
 
 /**
  * Formats a value for GraphQL query arguments
  */
-const formatQueryValue = (value: FilterValue): string => {
-  if (typeof value === 'string') return `"${value}"`;
-  if (typeof value === 'bigint') return value.toString();
-  if (typeof value === 'object' && value !== null) {
-    const entries = Object.entries(value)
-      .map(([k, v]) => `${k}: ${formatQueryValue(v)}`)
-      .join(', ');
+const formatQueryValue = (value: FilterValue, visited = new WeakSet()): string | undefined => {
+  if (value === null || value === undefined) {
+
+    return undefined;
+  }
+  if (typeof value === 'string') {
+
+    return `"${value}"`;
+  }
+
+  if (typeof value === 'bigint') {
+
+    return value.toString();
+  }
+
+  if (Array.isArray(value)) {
+
+    return `[${value.map(v => formatQueryValue(v, visited)).filter(v => v !== undefined).join(', ')}]`;
+  }
+
+  if (typeof value === 'object') {
+    // Check for circular reference
+    if (visited.has(value)) {
+
+      return undefined;
+    }
+    visited.add(value);
+
+    const entries = formatFilterValues(value, v => formatQueryValue(v, visited));
     return `{ ${entries} }`;
   }
+
+  if (typeof value === 'function') {
+
+    return '"[Function]"'; // Handle functions specially
+  }
+
   return String(value);
-}
+};
 
 /**
  * Builds query arguments array for GraphQL queries
@@ -154,7 +183,8 @@ const buildQueryArguments = (options: QueryOptions): string[] => {
   }
 
   if (options.filters) {
-    const whereClause = Object.entries(options.filters)
+    const whereClause = formatFilterValues(options.filters, formatQueryValue);
+    Object.entries(options.filters)
       .map(([key, value]) => `${key}: ${formatQueryValue(value)}`)
       .join(', ');
 
@@ -164,7 +194,14 @@ const buildQueryArguments = (options: QueryOptions): string[] => {
   }
 
   return queryArgs;
-}
+};
+
+const formatFilterValues = (value: FilterValue, formatter: (v: FilterValue) => string | undefined): string => Object.entries(value)
+  .map(([k, v]) => [k, formatter(v)])
+  .filter(([, v]) => v !== undefined)
+  .map(([k, v]) => `${k}: ${v}`)
+  .join(', ');
+
 
 export { buildBatchQuery, createEntityQueries, createEntityQuery };
 

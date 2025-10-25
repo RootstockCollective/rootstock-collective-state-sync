@@ -11,7 +11,7 @@ import { syncEntities } from '../../handlers/subgraphSyncer';
 
 const convertDbIdToHash = (id: string): Hex => {
   return Buffer.from(id, 'hex').toString('utf-8') as Hex;
-}
+};
 
 const NEW_SCHEMA = 'tmp_public';
 const SHOULD_INITIALIZE_DB = false;
@@ -33,7 +33,7 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
       hash: onchainBlockHash,
     } = await client.getBlock({
       blockNumber
-    })
+    });
 
     const blockHash = convertDbIdToHash(id);
 
@@ -53,10 +53,10 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
     }
 
     return false;
-  }
+  };
 
   return {
     name: 'reorgCleanupStrategy',
     detectAndProcess
-  }
-}
+  };
+};

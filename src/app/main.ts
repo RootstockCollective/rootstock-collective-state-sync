@@ -31,6 +31,6 @@ const main = async () => {
     log.error('Error in main process:', error);
     process.exit(1);
   }
-}
+};
 
 main();

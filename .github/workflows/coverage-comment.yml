@@ -1,0 +1,68 @@
+name: Coverage Comment
+
+on:
+  workflow_run:
+    workflows: ["Test & Coverage"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  comment:
+    name: Update Coverage Comment
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    
+    permissions:
+      contents: read
+      actions: read
+    
+    steps:
+      - name: Download coverage artifact
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+            
+            const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "coverage-report"
+            })[0];
+            
+            if (matchArtifact) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: matchArtifact.id,
+                archive_format: 'zip',
+              });
+              
+              const fs = require('fs');
+              fs.writeFileSync('coverage.zip', Buffer.from(download.data));
+            }
+      
+      - name: Extract coverage
+        run: |
+          if [ -f coverage.zip ]; then
+            unzip -q coverage.zip
+            echo "Coverage artifact extracted"
+          else
+            echo "No coverage artifact found"
+          fi
+      
+      - name: Display coverage summary
+        if: hashFiles('lcov.info') != ''
+        run: |
+          if [ -f lcov.info ]; then
+            echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            # Parse lcov.info for summary (basic parsing)
+            echo "Coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+

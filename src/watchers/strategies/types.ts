@@ -23,7 +23,7 @@ interface BlockChangeLog {
 }
 
 interface LastProcessedBlock {
-  id: Boolean; // there will only ever be one last processed block
+  id: boolean; // there will only ever be one last processed block
   hash: BlockHash;
   number: bigint;
   timestamp: bigint;
@@ -42,4 +42,4 @@ interface Proposal {
   createdAtBlock: bigint;
 }
 
-export type { ChangeStrategyParams, ChangeStrategy, BlockChangeLog, Proposal, LastProcessedBlock }
+export type { ChangeStrategyParams, ChangeStrategy, BlockChangeLog, Proposal, LastProcessedBlock };
