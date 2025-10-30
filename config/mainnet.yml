@@ -6,9 +6,9 @@ blockchain:
   blockIntervalThreshold: 1
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmUkydakVyQexGfbUubdz58M7Bw2uiAAd1KvUNiEBj4jJh"
+    id: "deployments/id/QmNVbEJDoigFnsa3yHQbH7H2BF59U36YkXTfJxevng8VqF"
   governance:
-    id: "deployments/id/QmNph49E6kx53GfD5yVbX7Emq8SNfp5fdhQG1v9TTeqL3v"
+    id: "deployments/id/QmU2cgvAGiNgwv2N6hkmLzgm5uqDGmVwEo3coVF1RJXN31"
 contracts:
   - name: BackersManager
     address: "0x7995C48D987941291d8008695A4133E557a11530"
