@@ -46,6 +46,7 @@ interface Contract {
 interface Column {
     name: string;
     type: ColumnType;
+    nullable?: boolean;
 }
 
 interface Entity {

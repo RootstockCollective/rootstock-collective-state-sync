@@ -25,22 +25,31 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): Colu
   return idColumns.map(col => col.type);
 };
 
-const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
+const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType, nullable = false) => {
   const config = columnTypeConfigs[type];
   if (!config) {
     log.error(`Invalid column type: ${type}`);
     throw new Error(`Invalid column type: ${type}`);
   }
-  config.knexHandler(table, name);
+  
+  if (nullable) {
+    if (!config.knexHandlerNullable) {
+      throw new Error(`Column type ${type} does not support nullable option`);
+    }
+    config.knexHandlerNullable(table, name);
+  } else {
+    config.knexHandler(table, name);
+  }
 };
 
 const createTable = async (trx: Knex.Transaction, entity: Entity, schema: DatabaseSchema): Promise<void> => {
   await trx.schema.createTable(entity.name, (table) => {
     for (const column of entity.columns) {
+      const nullable = column.nullable ?? false;
       if (schema.entities.has(column.type)) {
         const referencedType = getReferencedIdColumnType(schema, column);
         for (const type of referencedType) {
-          createColumn(table, column.name, type);
+          createColumn(table, column.name, type, nullable);
           table.foreign(column.name)
             .references('id')
             .inTable(column.type)
@@ -48,11 +57,14 @@ const createTable = async (trx: Knex.Transaction, entity: Entity, schema: Databa
         }
       }
       else if (isColumnType(column.type)) {
-        createColumn(table, column.name, column.type);
+        createColumn(table, column.name, column.type, nullable);
       } else if (isArrayColumnType(column.type)) {
         const baseType = column.type[0] as ColumnType;
         const config = columnTypeConfigs[baseType];
-        table.specificType(column.name, `${config.sqlType}[]`).notNullable();
+        const col = table.specificType(column.name, `${config.sqlType}[]`);
+        if (!nullable) {
+          col.notNullable();
+        }
       }
       else {
         log.error(`Invalid column type: ${column.type}`);

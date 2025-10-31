@@ -7,6 +7,7 @@ type ArrayColumnType = [ColumnType];
 interface ColumnTypeConfig {
     sqlType: string;
     knexHandler: (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder;
+    knexHandlerNullable?: (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder;
 }
 
 const columnTypeConfigs: Record<ColumnType, ColumnTypeConfig> = {
@@ -20,7 +21,8 @@ const columnTypeConfigs: Record<ColumnType, ColumnTypeConfig> = {
   },
   Bytes: {
     sqlType: 'BYTEA',
-    knexHandler: (table, name) => table.binary(name).notNullable()
+    knexHandler: (table, name) => table.binary(name).notNullable(),
+    knexHandlerNullable: (table, name) => table.binary(name).nullable()
   },
   String: {
     sqlType: 'TEXT',
