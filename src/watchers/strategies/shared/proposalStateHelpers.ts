@@ -68,7 +68,7 @@ export const getProposalStatesViaMulticall = async (
     // Execute multicall
     const results = await client.multicall({
       contracts: calls,
-    } as any);
+    });
 
     // Map results back to proposal IDs
     proposalIds.forEach((proposalId, index) => {
