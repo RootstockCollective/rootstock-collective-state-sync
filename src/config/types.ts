@@ -29,6 +29,8 @@ interface Database {
 interface Blockchain {
     network: SupportedChain;
     blockIntervalThreshold: number;
+    oldProposalCheckIntervalBlocks?: number;
+    blocksPerWeek?: number;
 }
 
 interface SubgraphProvider {

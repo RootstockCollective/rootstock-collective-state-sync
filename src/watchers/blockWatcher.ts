@@ -7,7 +7,7 @@ import { AppContext } from '../context/types';
 import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
 import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
-import { createNewProposalStrategy, createProposalStateStrategy } from './strategies';
+import { createNewProposalStrategy, createProposalStateStrategy, createOldProposalStateStrategy } from './strategies';
 
 
 const createBlockHandlerWithStrategies = async (
@@ -19,6 +19,7 @@ const createBlockHandlerWithStrategies = async (
     blockChangeLogStrategy,
     createNewProposalStrategy(),
     createProposalStateStrategy(),
+    createOldProposalStateStrategy(),
   ];
 
   return async (blockNumber: bigint | null): Promise<void> => {
