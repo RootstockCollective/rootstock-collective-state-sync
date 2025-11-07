@@ -9,6 +9,8 @@ database:
   ssl: true
 blockchain:
   blockIntervalThreshold: 3
+  oldProposalCheckIntervalBlocks: 15  # ~7.5 minutes at 30s/block
+  blocksPerWeek: 20160  # 7 days * 24h * 3600s / 30s per block
 subgraphProviders:
   collective-rewards:
     url: "https://gateway.thegraph.com/api"
