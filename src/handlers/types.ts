@@ -7,30 +7,28 @@ type ArrayColumnType = [ColumnType];
 interface ColumnTypeConfig {
     sqlType: string;
     knexHandler: (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder;
-    knexHandlerNullable?: (table: Knex.TableBuilder, name: string) => Knex.ColumnBuilder;
 }
 
 const columnTypeConfigs: Record<ColumnType, ColumnTypeConfig> = {
   Boolean: {
     sqlType: 'BOOLEAN',
-    knexHandler: (table, name) => table.boolean(name).notNullable()
+    knexHandler: (table, name) => table.boolean(name).nullable()
   },
   BigInt: {
     sqlType: 'NUMERIC',
-    knexHandler: (table, name) => table.decimal(name, 78, 0).notNullable()
+    knexHandler: (table, name) => table.decimal(name, 78, 0).nullable()
   },
   Bytes: {
     sqlType: 'BYTEA',
-    knexHandler: (table, name) => table.binary(name).notNullable(),
-    knexHandlerNullable: (table, name) => table.binary(name).nullable()
+    knexHandler: (table, name) => table.binary(name).nullable()
   },
   String: {
     sqlType: 'TEXT',
-    knexHandler: (table, name) => table.text(name).notNullable()
+    knexHandler: (table, name) => table.text(name).nullable()
   },
   Integer: {
     sqlType: 'INTEGER',
-    knexHandler: (table, name) => table.integer(name).notNullable()
+    knexHandler: (table, name) => table.integer(name).nullable()
   }
 } as const;
 

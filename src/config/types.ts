@@ -1,4 +1,4 @@
-import { ColumnType } from '../handlers/types';
+import { ArrayColumnType, ColumnType } from '../handlers/types';
 import { SupportedChain } from './chain';
 import log from 'loglevel';
 
@@ -45,7 +45,7 @@ interface Contract {
 
 interface Column {
     name: string;
-    type: ColumnType;
+    type: ColumnType | ArrayColumnType;
     nullable?: boolean;
 }
 
