@@ -116,7 +116,7 @@ const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string 
   return columns
     .map(column => {
       // For foreign key relationships, only select the id field
-      if (schema.entities.has(column.type)) {
+      if (typeof column.type === 'string' && schema.entities.has(column.type)) {
         return `${column.name} { id }`;
       }
       return column.name;

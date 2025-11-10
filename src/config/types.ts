@@ -45,7 +45,7 @@ interface Contract {
 
 interface Column {
     name: string;
-    type: ColumnType | ArrayColumnType;
+    type: ColumnType | ArrayColumnType | string;
     nullable?: boolean;
 }
 

@@ -6,6 +6,10 @@ import { AppContext } from '../context/types';
 import { ColumnType, columnTypeConfigs, isArrayColumnType, isColumnType } from './types';
 
 const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): ColumnType[] => {
+  if (typeof column.type !== 'string' || isColumnType(column.type) || isArrayColumnType(column.type)) {
+    throw new Error(`Column type must be an entity reference, got: ${column.type}`);
+  }
+  
   const referencedEntity = schema.entities.get(column.type);
   if (!referencedEntity) {
     throw new Error(`Referenced entity ${column.type} not found in schema`);
@@ -16,54 +20,47 @@ const getReferencedIdColumnType = (schema: DatabaseSchema, column: Column): Colu
     if (!col) {
       throw new Error(`Primary key column '${key}' not found in entity ${column.type}`);
     }
-    if (!isColumnType(col.type)) {
+    if (typeof col.type !== 'string' || !isColumnType(col.type)) {
       throw new Error(`Invalid column type for primary key '${key}' in entity ${column.type}`);
     }
     return col;
   });
 
-  return idColumns.map(col => col.type);
+  return idColumns.map(col => col.type as ColumnType);
 };
 
-const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType, nullable = false) => {
+const createColumn = (table: Knex.TableBuilder, name: string, type: ColumnType) => {
   const config = columnTypeConfigs[type];
   if (!config) {
     log.error(`Invalid column type: ${type}`);
     throw new Error(`Invalid column type: ${type}`);
   }
   
-  if (nullable) {
-    if (!config.knexHandlerNullable) {
-      throw new Error(`Column type ${type} does not support nullable option`);
-    }
-    config.knexHandlerNullable(table, name);
-  } else {
-    config.knexHandler(table, name);
-  }
+  config.knexHandler(table, name);
 };
 
 const createTable = async (trx: Knex.Transaction, entity: Entity, schema: DatabaseSchema): Promise<void> => {
   await trx.schema.createTable(entity.name, (table) => {
     for (const column of entity.columns) {
-      const nullable = column.nullable ?? false;
-      if (schema.entities.has(column.type)) {
+      // Check if it's an array type first
+      if (isArrayColumnType(column.type)) {
+        const baseType = column.type[0] as ColumnType;
+        const config = columnTypeConfigs[baseType];
+        table.specificType(column.name, `${config.sqlType}[]`);
+      }
+      // Check if it's a basic column type
+      else if (isColumnType(column.type)) {
+        createColumn(table, column.name, column.type);
+      }
+      // Check if it's an entity reference
+      else if (typeof column.type === 'string' && schema.entities.has(column.type)) {
         const referencedType = getReferencedIdColumnType(schema, column);
         for (const type of referencedType) {
-          createColumn(table, column.name, type, nullable);
+          createColumn(table, column.name, type);
           table.foreign(column.name)
             .references('id')
             .inTable(column.type)
             .onDelete('CASCADE');
-        }
-      }
-      else if (isColumnType(column.type)) {
-        createColumn(table, column.name, column.type, nullable);
-      } else if (isArrayColumnType(column.type)) {
-        const baseType = column.type[0] as ColumnType;
-        const config = columnTypeConfigs[baseType];
-        const col = table.specificType(column.name, `${config.sqlType}[]`);
-        if (!nullable) {
-          col.notNullable();
         }
       }
       else {
