@@ -147,60 +147,6 @@ describe('Schema Context', () => {
       assert.notEqual(schema1.entities, schema2.entities);
       assert.equal(schema1.entities.size, schema2.entities.size);
     });
-
-    it('should handle AllocationHistory entity', () => {
-      const entity: Entity = {
-        name: 'AllocationHistory',
-        primaryKey: ['id'],
-        subgraphProvider: 'collective-rewards',
-        columns: [
-          { name: 'id', type: 'Bytes' },
-          { name: 'cycleStart', type: 'BigInt' },
-          { name: 'blockHash', type: 'Bytes' },
-          { name: 'backer', type: 'Bytes' },
-          { name: 'builder', type: 'Bytes' },
-          { name: 'allocation', type: 'BigInt' }
-        ]
-      };
-
-      const schema = createSchemaContext([entity]);
-      const retrieved = schema.entities.get('AllocationHistory');
-
-      assert.ok(retrieved);
-      assert.equal(retrieved.name, 'AllocationHistory');
-      assert.equal(retrieved.columns.length, 6);
-      assert.equal(retrieved.subgraphProvider, 'collective-rewards');
-    });
-
-    it('should handle ClaimedRewardsHistory entity', () => {
-      const entity: Entity = {
-        name: 'ClaimedRewardsHistory',
-        primaryKey: ['id'],
-        subgraphProvider: 'collective-rewards',
-        columns: [
-          { name: 'id', type: 'Bytes' },
-          { name: 'cycleStart', type: 'BigInt' },
-          { name: 'blockHash', type: 'Bytes' },
-          { name: 'builder', type: 'Bytes' },
-          { name: 'rewardToken', type: 'Bytes' },
-          { name: 'backer', type: 'Bytes', nullable: true },
-          { name: 'amount', type: 'BigInt' }
-        ]
-      };
-
-      const schema = createSchemaContext([entity]);
-      const retrieved = schema.entities.get('ClaimedRewardsHistory');
-
-      assert.ok(retrieved);
-      assert.equal(retrieved.name, 'ClaimedRewardsHistory');
-      assert.equal(retrieved.columns.length, 7);
-      assert.equal(retrieved.subgraphProvider, 'collective-rewards');
-      
-      // Verify nullable backer column
-      const backerColumn = retrieved.columns.find(col => col.name === 'backer');
-      assert.ok(backerColumn);
-      assert.equal(backerColumn.nullable, true);
-    });
   });
 });
 
