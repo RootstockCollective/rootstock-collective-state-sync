@@ -363,3 +363,24 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "governance"
+  - name: StakingHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: user
+        type: Account
+      - name: action
+        type: String
+      - name: amount
+        type: BigInt
+      - name: balance
+        type: BigInt
+      - name: blockNumber
+        type: BigInt
+      - name: timestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
