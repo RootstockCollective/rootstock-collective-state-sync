@@ -233,4 +233,4 @@ const getExistingTables = async (trx: Knex.Transaction): Promise<string[]> => {
   return result.map((row) => row.table_name);
 };
 
-export { createDb };
+export { createDb, applyNullableConstraint, createArrayColumn, createColumn };
