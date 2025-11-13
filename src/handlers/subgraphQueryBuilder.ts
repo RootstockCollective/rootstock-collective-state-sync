@@ -2,6 +2,7 @@ import { Column, Entity } from '../config/types';
 import { DatabaseSchema } from '../context/schema';
 import { GraphQLRequest } from '../context/subgraphProvider';
 import { pluralizeEntityName } from '../utils/pluralizeEntityName';
+import { isArrayColumnType } from './types';
 
 interface BatchQueryRequest {
   request: GraphQLRequest;
@@ -116,7 +117,7 @@ const buildFieldSelection = (columns: Column[], schema: DatabaseSchema): string 
   return columns
     .map(column => {
       // For foreign key relationships, only select the id field
-      if (typeof column.type === 'string' && schema.entities.has(column.type)) {
+      if (!isArrayColumnType(column.type) && schema.entities.has(column.type)) {
         return `${column.name} { id }`;
       }
       return column.name;
@@ -204,4 +205,3 @@ const formatFilterValues = (value: FilterValue, formatter: (v: FilterValue) => s
 
 
 export { buildBatchQuery, createEntityQueries, createEntityQuery };
-

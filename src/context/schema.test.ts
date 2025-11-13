@@ -147,6 +147,74 @@ describe('Schema Context', () => {
       assert.notEqual(schema1.entities, schema2.entities);
       assert.equal(schema1.entities.size, schema2.entities.size);
     });
+
+    it('should preserve nullable property for nullable columns', () => {
+      const entity: Entity = {
+        name: 'NullableTest',
+        primaryKey: ['id'],
+        subgraphProvider: 'mainProvider',
+        columns: [
+          { name: 'id', type: 'String' },
+          { name: 'optionalField', type: 'String', nullable: true },
+          { name: 'requiredField', type: 'String', nullable: false }
+        ]
+      };
+
+      const schema = createSchemaContext([entity]);
+      const retrieved = schema.entities.get('NullableTest');
+
+      assert.ok(retrieved);
+      assert.equal(retrieved.columns[0].nullable, undefined); // id has no nullable property
+      assert.equal(retrieved.columns[1].nullable, true); // optionalField is nullable
+      assert.equal(retrieved.columns[2].nullable, false); // requiredField is explicitly not nullable
+    });
+
+    it('should preserve nullable property for nullable array columns', () => {
+      const entity: Entity = {
+        name: 'NullableArrayTest',
+        primaryKey: ['id'],
+        subgraphProvider: 'mainProvider',
+        columns: [
+          { name: 'id', type: 'String' },
+          { name: 'nullableTags', type: ['String'], nullable: true },
+          { name: 'requiredTags', type: ['String'], nullable: false }
+        ]
+      };
+
+      const schema = createSchemaContext([entity]);
+      const retrieved = schema.entities.get('NullableArrayTest');
+
+      assert.ok(retrieved);
+      assert.equal(retrieved.columns[1].nullable, true); // nullableTags is nullable
+      assert.equal(retrieved.columns[2].nullable, false); // requiredTags is explicitly not nullable
+    });
+
+    it('should handle entities with mix of nullable and non-nullable columns', () => {
+      const entity: Entity = {
+        name: 'MixedNullable',
+        primaryKey: ['id'],
+        subgraphProvider: 'mainProvider',
+        columns: [
+          { name: 'id', type: 'Bytes' },
+          { name: 'name', type: 'String' }, // no nullable property (defaults to not nullable)
+          { name: 'description', type: 'String', nullable: true },
+          { name: 'tags', type: ['String'] }, // array without nullable (defaults to not nullable)
+          { name: 'metadata', type: ['String'], nullable: true },
+          { name: 'count', type: 'Integer', nullable: false }
+        ]
+      };
+
+      const schema = createSchemaContext([entity]);
+      const retrieved = schema.entities.get('MixedNullable');
+
+      assert.ok(retrieved);
+      assert.equal(retrieved.columns.length, 6);
+      assert.equal(retrieved.columns[0].nullable, undefined); // id
+      assert.equal(retrieved.columns[1].nullable, undefined); // name (default)
+      assert.equal(retrieved.columns[2].nullable, true); // description
+      assert.equal(retrieved.columns[3].nullable, undefined); // tags (default)
+      assert.equal(retrieved.columns[4].nullable, true); // metadata
+      assert.equal(retrieved.columns[5].nullable, false); // count
+    });
   });
 });
-
