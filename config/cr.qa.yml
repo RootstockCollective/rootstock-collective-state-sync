@@ -7,7 +7,7 @@ subgraphProviders:
   collective-rewards:
     id: "deployments/id/QmSaVHb9irnE5rS8nxTrDvEgWpXBvcK4QkgmwDU4SamwDa"
   governance:
-    id: "deployments/id/QmTsTRSLP5D93ZmLHPu6b4SDq7MwBPsoKJ4P6HGxHeU7vv"
+    id: "deployments/id/QmXNg1ekavnzj9jHbW8hfg6YsKYVKq5dmzuvromP5v3fm8"
 contracts:
   - name: BackersManager
     address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"
