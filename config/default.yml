@@ -306,6 +306,12 @@ entities:
         type: Bytes
       - name: allocation
         type: BigInt
+      - name: increased
+        type: Boolean
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
@@ -324,8 +330,12 @@ entities:
       - name: backer
         type: Bytes
         nullable: true
+      - name: blockTimestamp
+        type: BigInt
       - name: amount
         type: BigInt
+      - name: transactionHash
+        type: Bytes
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
