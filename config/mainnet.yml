@@ -6,7 +6,7 @@ blockchain:
   blockIntervalThreshold: 1
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmNVbEJDoigFnsa3yHQbH7H2BF59U36YkXTfJxevng8VqF"
+    id: "deployments/id/QmXjRKN1ZHCVAJwXxGwafnuHMYmYohsmxmVK2SddJrim1B"
   governance:
     id: "deployments/id/QmU2cgvAGiNgwv2N6hkmLzgm5uqDGmVwEo3coVF1RJXN31"
 contracts:

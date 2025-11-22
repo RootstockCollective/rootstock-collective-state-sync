@@ -5,7 +5,7 @@ blockchain:
   network: "testnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmSaVHb9irnE5rS8nxTrDvEgWpXBvcK4QkgmwDU4SamwDa"
+    id: "deployments/id/QmZ8QwDhUbvfDd72vsnXnQGvL4jNk1eVpWpX3iuHFpf2Mu"
   governance:
     id: "deployments/id/QmTsTRSLP5D93ZmLHPu6b4SDq7MwBPsoKJ4P6HGxHeU7vv"
 contracts:
