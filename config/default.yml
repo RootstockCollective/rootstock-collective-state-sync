@@ -292,6 +292,53 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
+  - name: AllocationHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: cycleStart
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+      - name: backer
+        type: Bytes
+      - name: builder
+        type: Bytes
+      - name: allocation
+        type: BigInt
+      - name: increased
+        type: Boolean
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
+  - name: ClaimedRewardsHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: cycleStart
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+      - name: builder
+        type: Bytes
+      - name: rewardToken
+        type: Bytes
+      - name: backer
+        type: Bytes
+        nullable: true
+      - name: blockTimestamp
+        type: BigInt
+      - name: amount
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
   - name: Account
     columns:
       - name: id

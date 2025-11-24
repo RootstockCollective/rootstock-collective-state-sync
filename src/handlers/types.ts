@@ -12,23 +12,23 @@ interface ColumnTypeConfig {
 const columnTypeConfigs: Record<ColumnType, ColumnTypeConfig> = {
   Boolean: {
     sqlType: 'BOOLEAN',
-    knexHandler: (table, name) => table.boolean(name).notNullable()
+    knexHandler: (table, name) => table.boolean(name)
   },
   BigInt: {
     sqlType: 'NUMERIC',
-    knexHandler: (table, name) => table.decimal(name, 78, 0).notNullable()
+    knexHandler: (table, name) => table.decimal(name, 78, 0)
   },
   Bytes: {
     sqlType: 'BYTEA',
-    knexHandler: (table, name) => table.binary(name).notNullable()
+    knexHandler: (table, name) => table.binary(name)
   },
   String: {
     sqlType: 'TEXT',
-    knexHandler: (table, name) => table.text(name).notNullable()
+    knexHandler: (table, name) => table.text(name)
   },
   Integer: {
     sqlType: 'INTEGER',
-    knexHandler: (table, name) => table.integer(name).notNullable()
+    knexHandler: (table, name) => table.integer(name)
   }
 } as const;
 
@@ -50,4 +50,3 @@ type EntityDataCollection<WMeta extends boolean = false> = WMeta extends WithMet
 
 export { columnTypeConfigs, isArrayColumnType, isColumnType };
 export type { ArrayColumnType, ColumnType, ColumnTypeConfig, EntityDataCollection, EntityRecord, WithMetadata };
-

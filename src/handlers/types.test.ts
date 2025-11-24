@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isArrayColumnType, isColumnType } from './types';
+import { columnTypeConfigs, isArrayColumnType, isColumnType } from './types';
 
 describe('Type Guards', () => {
   describe('isColumnType', () => {
@@ -21,15 +21,10 @@ describe('Type Guards', () => {
     });
 
     it('should return false for non-string inputs', () => {
-       
       assert.equal(isColumnType(123 as any), false);
-       
       assert.equal(isColumnType(null as any), false);
-       
       assert.equal(isColumnType(undefined as any), false);
-       
       assert.equal(isColumnType({} as any), false);
-       
       assert.equal(isColumnType([] as any), false);
     });
   });
@@ -52,24 +47,37 @@ describe('Type Guards', () => {
 
     it('should return false for non-array inputs', () => {
       assert.equal(isArrayColumnType('Boolean'), false);
-       
       assert.equal(isArrayColumnType(123 as any), false);
-       
       assert.equal(isArrayColumnType(null as any), false);
-       
       assert.equal(isArrayColumnType(undefined as any), false);
-       
       assert.equal(isArrayColumnType({} as any), false);
     });
 
     it('should return false for arrays with non-string elements', () => {
-       
       assert.equal(isArrayColumnType([123] as any), false);
-       
       assert.equal(isArrayColumnType([null] as any), false);
-       
       assert.equal(isArrayColumnType([{}] as any), false);
     });
   });
-});
 
+  describe('columnTypeConfigs', () => {
+    it('should have configs for all column types', () => {
+      const expectedTypes = ['Boolean', 'BigInt', 'Bytes', 'String', 'Integer'];
+      
+      for (const type of expectedTypes) {
+        assert.ok(columnTypeConfigs[type as keyof typeof columnTypeConfigs], `Missing config for ${type}`);
+        assert.ok(columnTypeConfigs[type as keyof typeof columnTypeConfigs].sqlType, `Missing sqlType for ${type}`);
+        assert.ok(columnTypeConfigs[type as keyof typeof columnTypeConfigs].knexHandler, `Missing knexHandler for ${type}`);
+      }
+    });
+
+    it('should have correct SQL types', () => {
+      assert.equal(columnTypeConfigs.Boolean.sqlType, 'BOOLEAN');
+      assert.equal(columnTypeConfigs.BigInt.sqlType, 'NUMERIC');
+      assert.equal(columnTypeConfigs.Bytes.sqlType, 'BYTEA');
+      assert.equal(columnTypeConfigs.String.sqlType, 'TEXT');
+      assert.equal(columnTypeConfigs.Integer.sqlType, 'INTEGER');
+    });
+
+  });
+});
