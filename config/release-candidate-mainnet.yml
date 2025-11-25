@@ -5,7 +5,7 @@ blockchain:
   network: "mainnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmXjRKN1ZHCVAJwXxGwafnuHMYmYohsmxmVK2SddJrim1B"
+    id: "deployments/id/QmVVVUcjuRSNQBjd3vUsVkdEX98HFZrxDYkFg6j8e1Tuvg"
   governance:
     id: "deployments/id/QmPfqjKsJTfQ22Bo8SgpHdUHS7eywsSvSXX7CdbHHpdBmb"
 contracts:
