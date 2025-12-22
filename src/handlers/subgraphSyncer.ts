@@ -1,10 +1,11 @@
 import log from 'loglevel';
 
 import { executeRequests } from '../context/subgraphProvider';
+import { GraphQLMetadata } from '../context/subgraphProvider';
 import { AppContext } from '../context/types';
 import { executeUpsert } from './dbUpsert';
 import { createEntityQueries } from './subgraphQueryBuilder';
-import { EntityDataCollection } from './types';
+import { EntityDataCollection, WithMetadata } from './types';
 
 interface EntitySyncStatus {
     entityName: string;
@@ -41,6 +42,42 @@ const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint)
   ...(blockNumber ? { _change_block: { number_gte: blockNumber } } : {}),
 });
 
+interface SubgraphMetadataRecord {
+  id: string;
+  blockNumber: bigint | string;
+  blockHash: string;
+  blockTimestamp: bigint | string;
+  deployment: string;
+  hasIndexingErrors: boolean;
+}
+
+const saveSubgraphMetadata = async (
+  context: AppContext,
+  subgraphName: string,
+  metadata: GraphQLMetadata
+): Promise<void> => {
+  if (!context.schema.entities.has('SubgraphMetadata')) {
+    return;
+  }
+  
+  try {
+    await context.dbContext.db<SubgraphMetadataRecord>('SubgraphMetadata')
+      .insert({
+        id: subgraphName,
+        blockNumber: metadata.block.number,
+        blockHash: metadata.block.hash,
+        blockTimestamp: metadata.block.timestamp,
+        deployment: metadata.deployment,
+        hasIndexingErrors: metadata.hasIndexingErrors,
+      })
+      .onConflict('id')
+      .merge();
+    log.debug(`Saved SubgraphMetadata for ${subgraphName}`);
+  } catch (error) {
+    log.error(`Failed to save SubgraphMetadata for ${subgraphName}`, error);
+  }
+};
+
 const collectEntityData = async (
   context: AppContext,
   entities: string[],
@@ -54,6 +91,10 @@ const collectEntityData = async (
     const entity = schema.entities.get(entityName);
     if (!entity) {
       log.warn(`Entity ${entityName} not found in schema`);
+      continue;
+    }
+    
+    if (entity.syncable === false) {
       continue;
     }
         
@@ -79,17 +120,36 @@ const collectEntityData = async (
   // Process each subgraph separately
   for (const [subgraphName, subgraphEntities] of Object.entries(entitiesBySubgraph)) {
     const graphqlContext = graphqlContexts[subgraphName];
+    
+    const shouldRequestMetadata = context.schema.entities.has('SubgraphMetadata');
+    let isFirstBatch = true;
         
     let requests = createEntityQueries(schema, subgraphEntities, {
       first: graphqlContext.pagination.maxRowsPerRequest,
       filters: buildFilters(undefined, blockNumber)
     });
+    
+    if (shouldRequestMetadata && requests.length > 0) {
+      requests[0] = {
+        ...requests[0],
+        withMetadata: true
+      };
+    }
 
     while (requests.length > 0) {
       const results = await executeRequests(graphqlContext, requests);
+      
+      if (shouldRequestMetadata && isFirstBatch) {
+        const resultsWithMeta = results as EntityDataCollection<WithMetadata>;
+        if (resultsWithMeta._meta) {
+          await saveSubgraphMetadata(context, subgraphName, resultsWithMeta._meta);
+        }
+        isFirstBatch = false;
+      }
 
       requests = [];
       for (const [entityName, data] of Object.entries(results)) {
+        if (entityName === '_meta') continue;
         const currentStatus = entityStatus[entityName];
         if (!currentStatus) {
           throw new Error(`No status found for entity "${entityName}"`);
