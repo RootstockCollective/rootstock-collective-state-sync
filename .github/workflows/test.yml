@@ -85,7 +85,7 @@ jobs:
       
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request' && matrix.node-version == '22.x'
-        uses: romeovs/lcov-reporter-action@4cf015aa4afa87b78238301f1e3dc140ea0e1ec6 # v0.3.1
+        uses: romeovs/lcov-reporter-action@25674467b99fc58cc7706dc246d9647a94b5ba8f # v0.3.1
         with:
           lcov-file: ./coverage/lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
