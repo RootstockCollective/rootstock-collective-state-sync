@@ -16,6 +16,10 @@ subgraphProviders:
   governance:
     url: "https://gateway.thegraph.com/api"
     maxRowsPerRequest: 1000
+  usd-vault:
+    url: "https://api.studio.thegraph.com/query"
+    id: "1714703/usd-vault/version/latest"
+    maxRowsPerRequest: 1000
 entities:
   - name: LastProcessedBlock
     columns:
@@ -431,3 +435,26 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "governance"
+  - name: VaultHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: user
+        type: Bytes
+      - name: action
+        type: String
+      - name: assets
+        type: BigInt
+      - name: shares
+        type: BigInt
+      - name: balanceAfter
+        type: BigInt
+      - name: blockNumber
+        type: BigInt
+      - name: timestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
