@@ -43,7 +43,11 @@ const buildBatchQuery = (requests: BatchQueryRequest[]): string => {
   }`;
 };
 
-type FilterValue = string | bigint | number | { [key: string]: FilterValue };
+type FilterScalar = string | bigint | number | boolean;
+type FilterValue =
+  | FilterScalar
+  | FilterValue[]
+  | { [key: string]: FilterValue };
 interface QueryOptions {
   first?: number;
   order?: {
@@ -185,10 +189,6 @@ const buildQueryArguments = (options: QueryOptions): string[] => {
 
   if (options.filters) {
     const whereClause = formatFilterValues(options.filters, formatQueryValue);
-    Object.entries(options.filters)
-      .map(([key, value]) => `${key}: ${formatQueryValue(value)}`)
-      .join(', ');
-
     if (whereClause) {
       queryArgs.push(`where: { ${whereClause} }`);
     }

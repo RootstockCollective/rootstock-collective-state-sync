@@ -43,6 +43,21 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
+  - name: EntityChangeLog
+    columns:
+      - name: id
+        type: String
+      - name: blockNumber
+        type: BigInt
+      - name: blockHash
+        type: String
+      - name: entityName
+        type: String
+      - name: entityId
+        type: String
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
   - name: BackerStakingHistory
     columns:
       - name: id

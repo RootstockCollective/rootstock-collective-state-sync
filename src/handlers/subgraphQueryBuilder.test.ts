@@ -52,7 +52,7 @@ describe('Subgraph Query Builder', () => {
         ['Proposal', proposalEntity],
         ['Builder', builderEntity]
       ])
-    };
+    } as DatabaseSchema;
 
   });
 
@@ -292,9 +292,9 @@ describe('Subgraph Query Builder', () => {
           columns: []
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([['EmptyEntity', emptyEntity]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, 'EmptyEntity');
         assert.ok(result.query.includes('emptyEntities'));
@@ -379,27 +379,148 @@ describe('Subgraph Query Builder', () => {
         assert.ok(result.query.includes('votesFor:'));
       });
 
-      it('should handle array filter values', () => {
+      it('should handle array filter values with strings', () => {
         const result = createEntityQuery(mockSchema, 'Proposal', {
           filters: {
-            state: ['Active', 'Pending'] as any
+            state: ['Active', 'Pending']
           }
         });
 
-        // Arrays are converted to string
         assert.ok(result.query.includes('where:'), 'Query should include \'where:\'');
-        assert.ok(result.query.includes('state: ["Active", "Pending"]'), 'Query should include \'state: Active,Pending\'');
+        assert.ok(result.query.includes('state: ["Active", "Pending"]'), 'Query should include array of strings');
       });
 
-      it('should handle boolean filter values', () => {
+      it('should handle array filter values with numbers', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            votesFor: [100, 200, 300]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('votesFor: [100, 200, 300]'));
+      });
+
+      it('should handle array filter values with bigints', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            votesFor: [BigInt(1000), BigInt(2000), BigInt(3000)]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('votesFor: [1000, 2000, 3000]'));
+      });
+
+      it('should handle array filter values with booleans', () => {
         const result = createEntityQuery(mockSchema, 'Builder', {
           filters: {
-            activated: true as any
+            activated: [true, false]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('activated: [true, false]'));
+      });
+
+      it('should handle array filter values with mixed types', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            votesFor: [100, BigInt(2000), 300]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('votesFor: [100, 2000, 300]'));
+      });
+
+      it('should filter out null and undefined values from arrays', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            state: ['Active', null as any, 'Pending', undefined as any]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        // Should only include defined values
+        assert.ok(result.query.includes('state: ["Active", "Pending"]'));
+        assert.ok(!result.query.includes('null'));
+        assert.ok(!result.query.includes('undefined'));
+      });
+
+      it('should handle empty array filter values', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            state: []
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('state: []'));
+      });
+
+      it('should handle nested arrays in filter values', () => {
+        const result = createEntityQuery(mockSchema, 'Proposal', {
+          filters: {
+            state: [['Active', 'Pending'], ['Closed']]
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        // Nested arrays should be formatted recursively
+        assert.ok(result.query.includes('state: [["Active", "Pending"], ["Closed"]]'));
+      });
+
+      it('should handle boolean filter values (true)', () => {
+        const result = createEntityQuery(mockSchema, 'Builder', {
+          filters: {
+            activated: true
           }
         });
 
         assert.ok(result.query.includes('where:'));
         assert.ok(result.query.includes('activated: true'));
+      });
+
+      it('should handle boolean filter values (false)', () => {
+        const result = createEntityQuery(mockSchema, 'Builder', {
+          filters: {
+            activated: false
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('activated: false'));
+      });
+
+      it('should handle boolean values in nested filter objects', () => {
+        const result = createEntityQuery(mockSchema, 'Builder', {
+          filters: {
+            activated: {
+              eq: true,
+              ne: false
+            }
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('activated: {'));
+        assert.ok(result.query.includes('eq: true'));
+        assert.ok(result.query.includes('ne: false'));
+      });
+
+      it('should handle boolean values in array within nested objects', () => {
+        const result = createEntityQuery(mockSchema, 'Builder', {
+          filters: {
+            activated: {
+              in: [true, false]
+            }
+          }
+        });
+
+        assert.ok(result.query.includes('where:'));
+        assert.ok(result.query.includes('activated: {'));
+        assert.ok(result.query.includes('in: [true, false]'));
       });
 
       it('should handle number filter values', () => {
@@ -548,9 +669,9 @@ describe('Subgraph Query Builder', () => {
 
     describe('Schema and entity edge cases', () => {
       it('should handle schema with no entities', () => {
-        const emptySchema: DatabaseSchema = {
+        const emptySchema = {
           entities: new Map()
-        };
+        } as DatabaseSchema;
 
         assert.throws(
           () => createEntityQuery(emptySchema, 'AnyEntity'),
@@ -566,9 +687,9 @@ describe('Subgraph Query Builder', () => {
           columns: [{ name: 'id', type: 'Bytes' }]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([['Entity-With-Dashes', specialEntity]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, 'Entity-With-Dashes');
         assert.ok(result.query.includes('entity-With-Dashes')); // Check camelCase conversion
@@ -582,9 +703,9 @@ describe('Subgraph Query Builder', () => {
           columns: [{ name: 'id', type: 'Bytes' }]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([['Category', entityEndingY]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, 'Category');
         assert.ok(result.query.includes('categories')); // Should be 'categories' not 'categorys'
@@ -608,12 +729,12 @@ describe('Subgraph Query Builder', () => {
           ]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([
             ['Parent', parentEntity],
             ['Child', childEntity]
           ])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, 'Child');
         assert.ok(result.query.includes('parent { id }')); // Should only select id from relationship
@@ -630,9 +751,9 @@ describe('Subgraph Query Builder', () => {
           ]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([['Node', nodeEntity]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, 'Node');
         assert.ok(result.query.includes('parentNode { id }'));
@@ -647,9 +768,9 @@ describe('Subgraph Query Builder', () => {
           columns: [{ name: 'id', type: 'Bytes' }]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([[longName, longEntity]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, longName);
         assert.ok(result.entityName === longName);
@@ -663,9 +784,9 @@ describe('Subgraph Query Builder', () => {
           columns: [{ name: 'id', type: 'Bytes' }]
         };
 
-        const testSchema: DatabaseSchema = {
+        const testSchema = {
           entities: new Map([['', emptyNameEntity]])
-        };
+        } as DatabaseSchema;
 
         const result = createEntityQuery(testSchema, '');
         assert.ok(result.query.includes('s {')); // Empty name becomes 's' when pluralized

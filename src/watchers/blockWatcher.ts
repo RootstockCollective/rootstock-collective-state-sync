@@ -4,10 +4,8 @@ import { PublicClient, type Block } from 'viem';
 
 import { createClient } from '../client/createClient';
 import { AppContext } from '../context/types';
-import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
-import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy } from './strategies/types';
-import { createNewProposalStrategy, createProposalStateStrategy, createStakingHistoryStrategy } from './strategies';
+import { blockChangeLogStrategy, revertReorgsStrategy, createNewProposalStrategy, createProposalStateStrategy, createStakingHistoryStrategy } from './strategies';
 
 
 const createBlockHandlerWithStrategies = async (
@@ -15,11 +13,11 @@ const createBlockHandlerWithStrategies = async (
   client: PublicClient,
 ) => {
   const strategies: ChangeStrategy[] = [
-    createRevertReorgsStrategy(),
-    blockChangeLogStrategy,
+    blockChangeLogStrategy(),
     createNewProposalStrategy(),
     createProposalStateStrategy(),
     createStakingHistoryStrategy(),
+    revertReorgsStrategy(),
   ];
 
   return async (blockNumber: bigint | null): Promise<void> => {

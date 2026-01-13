@@ -2,17 +2,17 @@ import log from 'loglevel';
 
 import { executeRequests } from '../context/subgraphProvider';
 import { AppContext } from '../context/types';
+import { chunk } from '../utils/batch';
 import { executeUpsert } from './dbUpsert';
-import { createEntityQueries } from './subgraphQueryBuilder';
+import { createEntityQueries, createEntityQuery } from './subgraphQueryBuilder';
 import { EntityDataCollection } from './types';
 
 interface EntitySyncStatus {
-    entityName: string;
-    lastProcessedId: string | null;
-    isComplete: boolean;
-    totalProcessed: number;
+  entityName: string;
+  lastProcessedId: string | null;
+  isComplete: boolean;
+  totalProcessed: number;
 }
-
 
 const createInitialStatus = (entityName: string): EntitySyncStatus => ({
   entityName,
@@ -41,13 +41,28 @@ const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint)
   ...(blockNumber ? { _change_block: { number_gte: blockNumber } } : {}),
 });
 
+const processEntityData = async (
+  context: AppContext,
+  entityData: EntityDataCollection
+): Promise<void> => {
+  const { dbContext, schema } = context;
+  log.info('Processing all collected data...');
+  for (const [entityName, data] of Object.entries(entityData)) {
+    if (data.length > 0) {
+      log.info(`Upserting ${data.length} records for ${entityName}`);
+      await executeUpsert(dbContext, entityName, data, schema);
+    }
+  }
+  log.info('Completed processing all data');
+};
+
 const collectEntityData = async (
   context: AppContext,
   entities: string[],
   blockNumber?: bigint,
 ): Promise<EntityDataCollection> => {
   const { schema, graphqlContexts } = context;
-    
+
   // Group entities by their subgraph
   const entitiesBySubgraph: Record<string, string[]> = {};
   for (const entityName of entities) {
@@ -56,13 +71,13 @@ const collectEntityData = async (
       log.warn(`Entity ${entityName} not found in schema`);
       continue;
     }
-        
+
     const subgraphName = entity.subgraphProvider;
     if (!graphqlContexts[subgraphName]) {
       log.warn(`Subgraph context for ${subgraphName} not found`);
       continue;
     }
-        
+
     if (!entitiesBySubgraph[subgraphName]) {
       entitiesBySubgraph[subgraphName] = [];
     }
@@ -79,7 +94,7 @@ const collectEntityData = async (
   // Process each subgraph separately
   for (const [subgraphName, subgraphEntities] of Object.entries(entitiesBySubgraph)) {
     const graphqlContext = graphqlContexts[subgraphName];
-        
+
     let requests = createEntityQueries(schema, subgraphEntities, {
       first: graphqlContext.pagination.maxRowsPerRequest,
       filters: buildFilters(undefined, blockNumber)
@@ -100,9 +115,9 @@ const collectEntityData = async (
 
         const newStatus = updateStatus(
           currentStatus,
-                    lastId as string | null,
-                    data.length,
-                    graphqlContext.pagination.maxRowsPerRequest
+          lastId as string | null,
+          data.length,
+          graphqlContext.pagination.maxRowsPerRequest
         );
         entityStatus[entityName] = newStatus;
         log.info(`Entity ${entityName} status:`, {
@@ -136,29 +151,74 @@ const collectEntityData = async (
   return entityData;
 };
 
-const processEntityData = async (
-  context: AppContext,
-  entityData: EntityDataCollection
-): Promise<void> => {
-  const { dbContext, schema } = context;
-  log.info('Processing all collected data...');
-  for (const [entityName, data] of Object.entries(entityData)) {
-    if (data.length > 0) {
-      log.info(`Upserting ${data.length} records for ${entityName}`);
-      await executeUpsert(dbContext, entityName, data, schema);
-    }
-  }
-  log.info('Completed processing all data');
-};
 
 const syncEntities = async (
   context: AppContext,
   entities: string[],
   blockNumber?: bigint,
-): Promise<void> => {
+): Promise<EntityDataCollection> => {
   const entityData = await collectEntityData(context, entities, blockNumber);
+  await processEntityData(context, entityData);
+
+  return entityData;
+};
+
+const collectEntityDataByIds = async (
+  context: AppContext,
+  entityIdsByEntity: Map<string, Set<string>>,
+): Promise<EntityDataCollection> => {
+  const { schema, graphqlContexts } = context;
+
+  const requestsBySubgraph = new Map<string, ReturnType<typeof createEntityQuery>[]>();
+
+  for (const [entityName, idsSet] of entityIdsByEntity.entries()) {
+    const ent = schema.entities.get(entityName);
+    if (!ent) continue;
+
+    const subgraphName = ent.subgraphProvider;
+    const gql = graphqlContexts[subgraphName];
+    if (!gql) continue;
+
+    const ids = Array.from(idsSet);
+    if (ids.length === 0) continue;
+
+    const idChunks = chunk(ids, gql.pagination.maxRowsPerRequest);
+
+    const reqs = idChunks.map(idsChunk =>
+      createEntityQuery(schema, entityName, {
+        filters: { id_in: idsChunk },
+      })
+    );
+
+    requestsBySubgraph.set(subgraphName, [...(requestsBySubgraph.get(subgraphName) ?? []), ...reqs]);
+  }
+
+  const entityData: EntityDataCollection = {};
+
+  for (const [subgraphName, reqs] of requestsBySubgraph.entries()) {
+    const gql = graphqlContexts[subgraphName];
+    if (!gql) continue;
+
+    for (const batch of chunk(reqs, gql.pagination.maxRowsPerRequest)) {
+      const results = (await executeRequests(gql, batch)) as EntityDataCollection;
+
+      for (const [entityName, rows] of Object.entries(results)) {
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+
+        entityData[entityName] = [...(entityData[entityName] ?? []), ...rows];
+      }
+    }
+  }
+
+  return entityData;
+};
+
+const syncEntitiesByIds = async (
+  context: AppContext,
+  entityIdsByEntity: Map<string, Set<string>>,
+): Promise<void> => {
+  const entityData = await collectEntityDataByIds(context, entityIdsByEntity);
   await processEntityData(context, entityData);
 };
 
-export { syncEntities };
-
+export { syncEntities, syncEntitiesByIds };

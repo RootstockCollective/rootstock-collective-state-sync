@@ -63,7 +63,9 @@ describe('Schema Context', () => {
       assert.deepEqual(retrieved.primaryKey, ['id']);
     });
 
-    it('should handle entities with composite primary keys', () => {
+    it('should handle entities with composite primary keys in schema (but database creation will reject them)', () => {
+      // Note: Schema creation allows composite keys, but database creation via dbCreator
+      // will reject them because EntityChangeLog and subgraph protocol don't support composite keys
       const entity: Entity = {
         name: 'Vote',
         primaryKey: ['proposalId', 'voterId'],
