@@ -18,8 +18,10 @@ subgraphProviders:
     maxRowsPerRequest: 1000
   usd-vault:
     url: "https://api.studio.thegraph.com/query"
-    id: "1714703/usd-vault/version/latest"
+    id: "usd-vault/version/latest"
     maxRowsPerRequest: 1000
+    apiKey: 1714703
+contracts: []
 entities:
   - name: LastProcessedBlock
     columns:
