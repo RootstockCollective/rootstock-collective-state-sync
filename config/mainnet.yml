@@ -10,10 +10,7 @@ subgraphProviders:
   governance:
     id: "deployments/id/QmXWSRQqRXvVZf5FS2nHBmyQjicdssziZVjqTtpd5uSyLv"
   usd-vault:
-    url: "https://api.studio.thegraph.com/query"
     id: "usd-vault-mainnet/version/latest"
-    maxRowsPerRequest: 1000
-    apiKey: 1714703
 contracts:
   - name: BackersManager
     address: "0x7995C48D987941291d8008695A4133E557a11530"
