@@ -8,6 +8,7 @@ import { syncEntities } from '../../handlers/subgraphSyncer';
 import { EntityDataCollection, WithMetadata } from '../../handlers/types';
 import { BlockChangeLog, ChangeStrategy, LastProcessedBlock } from './types';
 import { getLastProcessedBlock, trackEntityIds } from './utils';
+import { pruneOldEntityChangeLog } from './reorgCleanupStrategy';
 
 const STRATEGY_NAME = 'blockChangeLogStrategy';
 const schemaName = 'BlockChangeLog';
@@ -104,6 +105,10 @@ export const blockChangeLogStrategy = (): ChangeStrategy => {
       );
 
       await trackEntityIds(context.dbContext, entityData, lastProcessedBlock.block.number, lastProcessedBlock.block.hash);
+
+      // Prune old EntityChangeLog entries to prevent unbounded growth
+      // Only keep entries within the reorg detection window
+      await pruneOldEntityChangeLog(context.dbContext.db, lastProcessedBlock.block.number);
 
       return true;
     }

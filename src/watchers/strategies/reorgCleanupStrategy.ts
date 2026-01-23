@@ -3,12 +3,16 @@ import { Hex, PublicClient } from 'viem';
 
 import { AppContext } from '../../context/types';
 import { isIgnorableEntity } from '../../utils/entityUtils';
-import { ChangeStrategy, BlockChangeLog } from './types';
-import { getLastProcessedBlock } from './utils';
+import { ChangeStrategy, ChangeStrategyParams, BlockChangeLog } from './types';
+import { getLastProcessedBlock, findChildEntityIds } from './utils';
 import { syncEntities, syncEntitiesByIds } from '../../handlers/subgraphSyncer';
 
 const MAX_BLOCKCHANGELOG_CHECK = 200;
 const REWIND_BUFFER = 50n;
+// Keep EntityChangeLog entries for this many blocks beyond the reorg detection window
+// This provides a safety buffer for reorg detection while preventing unbounded growth
+const ENTITY_CHANGELOG_RETENTION_BUFFER = 100n;
+const ENTITY_CHANGELOG_RETENTION_BLOCKS = BigInt(MAX_BLOCKCHANGELOG_CHECK) + REWIND_BUFFER + ENTITY_CHANGELOG_RETENTION_BUFFER;
 
 interface Ancestor { blockNumber: bigint; blockHash: string };
 
@@ -31,7 +35,7 @@ const findCommonAncestorSparse = async (
     .where('blockNumber', startBlockNumber.toString())
     .first();
 
-  if (startStored && startStored.id === startBlockHash) {
+  if (startStored && convertDbIdToHash(startStored.id).toLowerCase() === startBlockHash.toLowerCase()) {
     return { blockNumber: startBlockNumber, blockHash: startBlockHash };
   }
 
@@ -43,7 +47,7 @@ const findCommonAncestorSparse = async (
     try {
       const bn = BigInt(stored.blockNumber);
       const onchain = await client.getBlock({ blockNumber: bn });
-      if (onchain.hash === convertDbIdToHash(stored.id)) return { blockNumber: bn, blockHash: onchain.hash };
+      if (onchain.hash.toLowerCase() === convertDbIdToHash(stored.id).toLowerCase()) return { blockNumber: bn, blockHash: onchain.hash };
     } catch (e) {
       warn(`Error checking block ${stored.blockNumber}: ${e}`);
     }
@@ -117,6 +121,31 @@ const cleanupTracking = async (
   info(`Deleted ${deletedBcl} BlockChangeLog rows with blockNumber > ${rewindFrom}`);
 };
 
+/**
+ * Prunes old EntityChangeLog entries beyond the reorg detection window.
+ * This prevents unbounded growth when no reorgs occur.
+ * Keeps entries for ENTITY_CHANGELOG_RETENTION_BLOCKS blocks.
+ */
+export const pruneOldEntityChangeLog = async (
+  db: AppContext['dbContext']['db'],
+  currentBlockNumber: bigint
+): Promise<void> => {
+  const cutoffBlock = clampToZero(currentBlockNumber - ENTITY_CHANGELOG_RETENTION_BLOCKS);
+
+  if (cutoffBlock === 0n) {
+    // Don't prune if we haven't processed enough blocks yet
+    return;
+  }
+
+  const deleted = await db('EntityChangeLog')
+    .where('blockNumber', '<', cutoffBlock.toString())
+    .delete();
+
+  if (deleted > 0) {
+    info(`Pruned ${deleted} old EntityChangeLog entries older than block ${cutoffBlock} (retention: ${ENTITY_CHANGELOG_RETENTION_BLOCKS} blocks)`);
+  }
+};
+
 const updateLastProcessedToAncestor = async (
   db: AppContext['dbContext']['db'],
   client: PublicClient,
@@ -131,6 +160,7 @@ const updateLastProcessedToAncestor = async (
       timestamp: onchain.timestamp,
     });
 };
+
 
 const deleteTouchedIds = async (
   db: AppContext['dbContext']['db'],
@@ -212,16 +242,13 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
   const detectAndProcess = async ({
     client,
     context,
-  }: {
-    context: AppContext;
-    client: PublicClient;
-  }): Promise<boolean> => {
+  }: ChangeStrategyParams): Promise<boolean> => {
     const { dbContext, schema } = context;
     const { db } = dbContext;
 
     const { id, blockNumber: storedNumber } = await getLastProcessedBlock(db);
-    const storedHash = convertDbIdToHash(id);
     if (storedNumber === 0n) return false;
+    const storedHash = convertDbIdToHash(id);
     const onchain = await client.getBlock({ blockNumber: storedNumber });
     if (onchain.hash.toLowerCase() === storedHash.toLowerCase()) {
       debug(`No reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
@@ -247,8 +274,58 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
       const touched = await getTouchedIdsSince(db, rewindFrom, affected);
 
       if (touched.size > 0) {
+        // Lazy expansion: Use FK graph to transitively find all child entities
+        // Run DB SELECT childPk FROM child WHERE fkCol IN (parentIds) to accumulate child IDs transitively
+        // findChildEntityIds already recurses to find all descendants, so we just call it once per touched entity
+        info(`Expanding FK graph transitively for ${touched.size} touched entity types...`);
+        const allIdsToSync = new Map<string, Set<string>>(touched);
+
+        // Process entities in topological order for clarity (parents before children)
+        // Note: Using allIdsToSync.get() instead of touched.get() ensures we process
+        // entities that might have been merged from previous iterations, though recursion
+        // in findChildEntityIds already handles all descendants automatically
+        const touchedEntityNames = Array.from(touched.keys());
+        const topoOrder = schema.getUpsertOrder(touchedEntityNames);
+
+        for (const parentEntityName of topoOrder) {
+          const parentIdsSet = allIdsToSync.get(parentEntityName);
+          if (!parentIdsSet) continue;
+
+          const parentIds = Array.from(parentIdsSet);
+          info(`  Finding children of ${parentEntityName} (${parentIds.length} IDs)...`);
+
+          // findChildEntityIds recurses to find all descendants (children, grandchildren, etc.)
+          const childIds = await findChildEntityIds(db, schema, parentEntityName, parentIds, dbContext.batchSize);
+
+          // Merge child IDs into the sync map
+          for (const [childEntityName, childIdsSet] of childIds.entries()) {
+            const existing = allIdsToSync.get(childEntityName);
+            if (existing) {
+              childIdsSet.forEach(id => existing.add(id));
+            } else {
+              allIdsToSync.set(childEntityName, new Set(childIdsSet));
+            }
+          }
+
+          if (childIds.size > 0) {
+            const totalChildIds = Array.from(childIds.values()).reduce((sum, ids) => sum + ids.size, 0);
+            info(`    Found ${totalChildIds} child IDs across ${childIds.size} child type(s)`);
+          }
+        }
+
+        const childEntitiesOnly = Array.from(allIdsToSync.keys()).filter(name => !touched.has(name));
+        if (childEntitiesOnly.length > 0) {
+          info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
+        }
+
+        // Delete touched IDs (CASCADE will delete children)
         await deleteTouchedIds(db, schema, touched);
-        await syncEntitiesByIds(context, touched);
+
+        // Rehydrate via id_in queries in topological upsert order
+        const allEntityNames = Array.from(allIdsToSync.keys());
+        const upsertOrder = schema.getUpsertOrder(allEntityNames);
+        info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
+        await syncEntitiesByIds(context, allIdsToSync);
       } else {
         warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
         const deleteOrder = schema.getDeleteOrder(affected);

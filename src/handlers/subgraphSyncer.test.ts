@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { beforeEach, describe, it, mock } from 'node:test';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { Entity } from '../config/types';
 import { createSchemaContext } from '../context/schema';
 import { AppContext } from '../context/types';
@@ -8,8 +8,18 @@ import { syncEntities, syncEntitiesByIds } from './subgraphSyncer';
 
 describe('SubgraphSyncer', () => {
   let mockContext: AppContext;
+  let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
+    // Mock fetch globally to prevent real HTTP requests
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = mock.fn(async () => {
+      return {
+        ok: true,
+        json: async () => ({ data: {} }),
+        text: async () => '{}'
+      } as Response;
+    });
     // Create mock entities
     const entity1: Entity = {
       name: 'TestEntity1',
@@ -91,6 +101,13 @@ describe('SubgraphSyncer', () => {
       },
       config: createMockConfig()
     } as any;
+  });
+
+  afterEach(() => {
+    // Restore original fetch
+    if (originalFetch) {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   describe('createInitialStatus internal function', () => {

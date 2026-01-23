@@ -46,13 +46,32 @@ const processEntityData = async (
   entityData: EntityDataCollection
 ): Promise<void> => {
   const { dbContext, schema } = context;
-  log.info('Processing all collected data...');
-  for (const [entityName, data] of Object.entries(entityData)) {
-    if (data.length > 0) {
+  
+  // Filter to entities that have data
+  const entityNamesWithData = Object.keys(entityData).filter(
+    entityName => entityData[entityName]?.length > 0
+  );
+  
+  if (entityNamesWithData.length === 0) {
+    log.info('No entity data to process');
+    return;
+  }
+  
+  // Get FK-safe upsert order using topological sort (parents before children)
+  const orderedEntityNames = schema.getUpsertOrder(entityNamesWithData);
+  log.info(`Processing ${orderedEntityNames.length} entities in FK-safe order: ${orderedEntityNames.join(', ')}`);
+  
+  // Process entities in FK-safe order
+  for (const entityName of orderedEntityNames) {
+    const data = entityData[entityName];
+    // Note: data is guaranteed to exist and have length > 0 due to filtering above,
+    // but keeping check for type safety
+    if (data?.length > 0) {
       log.info(`Upserting ${data.length} records for ${entityName}`);
       await executeUpsert(dbContext, entityName, data, schema);
     }
   }
+  
   log.info('Completed processing all data');
 };
 
