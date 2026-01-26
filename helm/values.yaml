@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: 886436934082.dkr.ecr.us-east-1.amazonaws.com/rscoll-state-sync
+  pullPolicy: Always
+  tag: 8880e7e198c5f1b2b8fea2c28065b42890ea5aa3
+
+namespace: state-sync
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+
+livenessProbe:
+  exec:
+    command:
+    - pgrep
+    - -f
+    - node
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  exec:
+    command:
+    - pgrep
+    - -f
+    - node
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+env:
+  NODE_ENV: "dev"
+
+externalSecrets:
+  enabled: true
+  serviceAccount: external-secrets
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync/dev/database-uri
+    theGraphApiKeyCR: /rscoll-dev/dev/the-graph-api-key
+    theGraphApiKeyGov: /rscoll-dev/dev/dao-graph-api-key
