@@ -53,6 +53,34 @@ describe('Reorg Cleanup Strategy', () => {
     (mockDb as any).schema = {
       hasTable: mock.fn(async () => true)
     };
+    // Add transaction method for transaction support
+    (mockDb as any).transaction = mock.fn(async (callback: (trx: any) => Promise<any>) => {
+      const trx = Object.assign(
+        mock.fn((tableName: string) => {
+          const builder = createBuilder();
+          if (tableName === 'LastProcessedBlock') {
+            builder.insert = mock.fn(() => ({
+              onConflict: mock.fn(() => ({
+                merge: mock.fn(async () => Promise.resolve())
+              }))
+            }));
+            builder.update = mock.fn(async () => 1);
+          }
+          return builder;
+        }),
+        {
+          schema: (mockDb as any).schema,
+          delete: mock.fn(async () => 1),
+          insert: mock.fn(() => ({
+            onConflict: mock.fn(() => ({
+              merge: mock.fn(async () => Promise.resolve())
+            }))
+          })),
+          update: mock.fn(async () => 1)
+        }
+      );
+      return callback(trx);
+    });
 
 
     const builderEntity: Entity = {
@@ -494,9 +522,10 @@ describe('Reorg Cleanup Strategy', () => {
     const strategy = revertReorgsStrategy();
     const result = await strategy.detectAndProcess({ client: mockClient, context: mockContext, blockNumber: null });
 
-    // Note: The actual implementation will call syncEntitiesByIds, but since we can't mock modules,
-    // this test verifies the logic path is taken. The function should return true if reorg is processed.
-    // We may need to adjust expectations based on actual behavior
+    // Note: The actual implementation will call collectEntityDataByIds to fetch data first,
+    // then wrap delete + insert operations in a transaction using processEntityData.
+    // Since we can't mock modules, this test verifies the logic path is taken.
+    // The function should return true if reorg is processed.
     assert.equal(typeof result, 'boolean');
   });
 

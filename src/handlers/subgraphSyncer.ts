@@ -1,4 +1,5 @@
 import log from 'loglevel';
+import type { Knex } from 'knex';
 
 import { executeRequests } from '../context/subgraphProvider';
 import { AppContext } from '../context/types';
@@ -43,7 +44,8 @@ const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint)
 
 const processEntityData = async (
   context: AppContext,
-  entityData: EntityDataCollection
+  entityData: EntityDataCollection,
+  trx?: Knex.Transaction
 ): Promise<void> => {
   const { dbContext, schema } = context;
   
@@ -68,7 +70,7 @@ const processEntityData = async (
     // but keeping check for type safety
     if (data?.length > 0) {
       log.info(`Upserting ${data.length} records for ${entityName}`);
-      await executeUpsert(dbContext, entityName, data, schema);
+      await executeUpsert(dbContext, entityName, data, schema, trx);
     }
   }
   
@@ -175,9 +177,10 @@ const syncEntities = async (
   context: AppContext,
   entities: string[],
   blockNumber?: bigint,
+  trx?: Knex.Transaction
 ): Promise<EntityDataCollection> => {
   const entityData = await collectEntityData(context, entities, blockNumber);
-  await processEntityData(context, entityData);
+  await processEntityData(context, entityData, trx);
 
   return entityData;
 };
@@ -232,12 +235,5 @@ const collectEntityDataByIds = async (
   return entityData;
 };
 
-const syncEntitiesByIds = async (
-  context: AppContext,
-  entityIdsByEntity: Map<string, Set<string>>,
-): Promise<void> => {
-  const entityData = await collectEntityDataByIds(context, entityIdsByEntity);
-  await processEntityData(context, entityData);
-};
 
-export { syncEntities, syncEntitiesByIds };
+export { syncEntities, collectEntityDataByIds, collectEntityData, processEntityData };

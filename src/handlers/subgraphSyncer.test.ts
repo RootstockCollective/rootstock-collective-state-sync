@@ -4,7 +4,7 @@ import { Entity } from '../config/types';
 import { createSchemaContext } from '../context/schema';
 import { AppContext } from '../context/types';
 import { createMockConfig } from '../test-helpers/mockConfig';
-import { syncEntities, syncEntitiesByIds } from './subgraphSyncer';
+import { syncEntities } from './subgraphSyncer';
 
 describe('SubgraphSyncer', () => {
   let mockContext: AppContext;
@@ -276,93 +276,6 @@ describe('SubgraphSyncer', () => {
     it('should handle malformed entity data', async () => {
       // Test with entities missing required fields
       assert.ok(syncEntities);
-    });
-  });
-
-  describe('syncEntitiesByIds', () => {
-    it('should export syncEntitiesByIds function', () => {
-      assert.ok(syncEntitiesByIds);
-      assert.equal(typeof syncEntitiesByIds, 'function');
-    });
-
-    it('should handle empty entity IDs map', async () => {
-      const emptyMap = new Map<string, Set<string>>();
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, emptyMap);
-      });
-    });
-
-    it('should handle entity IDs map with single entity', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set(['0x1'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should handle entity IDs map with multiple entities', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set(['0x1', '0x2'])],
-        ['TestEntity2', new Set(['id1', 'id2'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should handle custom idChunkSize option', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set(['0x123'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should handle custom maxRequestsPerHttpCall option', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set(['0x123'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should handle entity not found in schema', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['NonExistentEntity', new Set(['id1'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should handle missing subgraph context', async () => {
-      const badContext = {
-        ...mockContext,
-        graphqlContexts: {}
-      };
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set(['0x123'])]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(badContext, entityIds);
-      });
-    });
-
-    it('should handle empty ID sets', async () => {
-      const entityIds = new Map<string, Set<string>>([
-        ['TestEntity1', new Set()]
-      ]);
-      await assert.doesNotReject(async () => {
-        await syncEntitiesByIds(mockContext, entityIds);
-      });
-    });
-
-    it('should chunk large ID sets correctly', async () => {
-      // This would require mocking executeRequests to verify chunking behavior
-      assert.ok(syncEntitiesByIds);
     });
   });
 

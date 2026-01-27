@@ -1,3 +1,4 @@
+import type { Knex } from 'knex';
 import { Column, Entity } from '../config/types';
 import { DatabaseContext } from '../context/db';
 import { DatabaseSchema } from '../context/schema';
@@ -26,7 +27,8 @@ const executeUpsert = async (
   dbContext: DatabaseContext,
   tableName: string, 
   records: DatabaseRecord[],
-  schema: DatabaseSchema
+  schema: DatabaseSchema,
+  trx?: Knex.Transaction
 ): Promise<void> => {
   if (records.length === 0) return;
 
@@ -37,6 +39,7 @@ const executeUpsert = async (
 
   const { db, batchSize, maxRetries, initialRetryDelay } = dbContext;
   const columnMap = createColumnMap(entity);
+  const dbOrTrx = trx ?? db;
 
   await processBatches(
     records,
@@ -50,7 +53,7 @@ const executeUpsert = async (
           // rather than upsert() which is only supported in SQLite and MySQL
           // See: https://knexjs.org/guide/query-builder.html#upsert
           // See: https://knexjs.org/guide/query-builder.html#onconflict
-          await db(tableName)
+          await dbOrTrx(tableName)
             .insert(filteredBatch)
             .onConflict(entity.primaryKey)
             .merge();

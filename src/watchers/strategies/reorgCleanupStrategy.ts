@@ -1,11 +1,12 @@
 import { info, warn, debug } from 'loglevel';
 import { Hex, PublicClient } from 'viem';
+import type { Knex } from 'knex';
 
 import { AppContext } from '../../context/types';
 import { isIgnorableEntity } from '../../utils/entityUtils';
 import { ChangeStrategy, ChangeStrategyParams, BlockChangeLog } from './types';
 import { getLastProcessedBlock, findChildEntityIds } from './utils';
-import { syncEntities, syncEntitiesByIds } from '../../handlers/subgraphSyncer';
+import { syncEntities, collectEntityDataByIds, collectEntityData, processEntityData } from '../../handlers/subgraphSyncer';
 
 const MAX_BLOCKCHANGELOG_CHECK = 200;
 const REWIND_BUFFER = 50n;
@@ -149,10 +150,12 @@ export const pruneOldEntityChangeLog = async (
 const updateLastProcessedToAncestor = async (
   db: AppContext['dbContext']['db'],
   client: PublicClient,
-  ancestor: Ancestor
+  ancestor: Ancestor,
+  trx?: Knex.Transaction
 ): Promise<void> => {
+  const dbOrTrx = trx ?? db;
   const onchain = await client.getBlock({ blockNumber: ancestor.blockNumber });
-  await db('LastProcessedBlock')
+  await dbOrTrx('LastProcessedBlock')
     .where('id', true)
     .update({
       hash: ancestor.blockHash,
@@ -165,8 +168,10 @@ const updateLastProcessedToAncestor = async (
 const deleteTouchedIds = async (
   db: AppContext['dbContext']['db'],
   schema: AppContext['schema'],
-  touched: Map<string, Set<string>>
+  touched: Map<string, Set<string>>,
+  trx?: Knex.Transaction
 ): Promise<void> => {
+  const dbOrTrx = trx ?? db;
   for (const [entityName, idsSet] of touched.entries()) {
     const entity = schema.entities.get(entityName);
     if (!entity) continue;
@@ -176,16 +181,18 @@ const deleteTouchedIds = async (
 
     // assuming primaryKey is ['id'] in your schema (most are)
     const [pk] = entity.primaryKey;
-    await db(entityName).whereIn(pk, ids).delete();
+    await dbOrTrx(entityName).whereIn(pk, ids).delete();
   }
 };
 
 const truncateEntities = async (
   db: AppContext['dbContext']['db'],
-  entityNames: string[]
+  entityNames: string[],
+  trx?: Knex.Transaction
 ): Promise<void> => {
+  const dbOrTrx = trx ?? db;
   for (const name of entityNames) {
-    await db(name).delete();
+    await dbOrTrx(name).delete();
   }
 };
 
@@ -208,32 +215,40 @@ const performFullRebuild = async (
     }
   }
 
-  if (allCollectiveRewardsEntities.length > 0) {
-    const deleteOrder = schema.getDeleteOrder(allCollectiveRewardsEntities);
-    info(`Deleting ${deleteOrder.length} collective-rewards entities in FK-safe order`);
-    await truncateEntities(db, deleteOrder);
-  }
+  // Fetch all data FIRST (read-only, no DB writes)
+  // This batches all subgraph queries efficiently together
+  info(`Fetching data for ${allCollectiveRewardsEntities.length} collective-rewards entities before delete+insert`);
+  const entityData = await collectEntityData(context, allCollectiveRewardsEntities);
 
-  // Delete tracking tables
-  info('Deleting tracking tables');
-  await db('EntityChangeLog').delete();
-  await db('BlockChangeLog').delete();
+  // Then wrap all delete + insert operations in transaction
+  await db.transaction(async (trx) => {
+    if (allCollectiveRewardsEntities.length > 0) {
+      const deleteOrder = schema.getDeleteOrder(allCollectiveRewardsEntities);
+      info(`Deleting ${deleteOrder.length} collective-rewards entities in FK-safe order`);
+      await truncateEntities(db, deleteOrder, trx);
+    }
 
-  // Reset LastProcessedBlock to initial state
-  info('Resetting LastProcessedBlock to initial state');
-  await db('LastProcessedBlock')
-    .insert({
-      id: true,
-      hash: '0x00',
-      number: 0n,
-      timestamp: 0n,
-    })
-    .onConflict('id')
-    .merge();
+    // Delete tracking tables
+    info('Deleting tracking tables');
+    await trx('EntityChangeLog').delete();
+    await trx('BlockChangeLog').delete();
 
-  // Sync all entities from scratch (like initial sync)
-  info(`Syncing ${allCollectiveRewardsEntities.length} collective-rewards entities from scratch`);
-  await syncEntities(context, allCollectiveRewardsEntities);
+    // Reset LastProcessedBlock to initial state
+    info('Resetting LastProcessedBlock to initial state');
+    await trx('LastProcessedBlock')
+      .insert({
+        id: true,
+        hash: '0x00',
+        number: 0n,
+        timestamp: 0n,
+      })
+      .onConflict('id')
+      .merge();
+
+    // Sync all entities from scratch (like initial sync)
+    info(`Resyncing ${allCollectiveRewardsEntities.length} collective-rewards entities from scratch`);
+    await processEntityData(context, entityData, trx);
+  });
 
   info('Full rebuild complete. All collective-rewards tables have been deleted and resynced.');
 };
@@ -318,26 +333,41 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
           info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
         }
 
-        // Delete touched IDs (CASCADE will delete children)
-        await deleteTouchedIds(db, schema, touched);
+        // Fetch all data FIRST (read-only, no DB writes)
+        // This batches all subgraph queries efficiently together
+        info(`Fetching data for ${allIdsToSync.size} entity types before delete+insert`);
+        const entityData = await collectEntityDataByIds(context, allIdsToSync);
 
-        // Rehydrate via id_in queries in topological upsert order
-        const allEntityNames = Array.from(allIdsToSync.keys());
-        const upsertOrder = schema.getUpsertOrder(allEntityNames);
-        info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
-        await syncEntitiesByIds(context, allIdsToSync);
+        // Then wrap delete + insert in transaction
+        await db.transaction(async (trx) => {
+          // Delete touched IDs (CASCADE will delete children)
+          await deleteTouchedIds(db, schema, touched, trx);
+
+          // Rehydrate via id_in queries in topological upsert order
+          const allEntityNames = Array.from(allIdsToSync.keys());
+          const upsertOrder = schema.getUpsertOrder(allEntityNames);
+          info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
+          await processEntityData(context, entityData, trx);
+        });
       } else {
         warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
         const deleteOrder = schema.getDeleteOrder(affected);
 
-        await truncateEntities(db, deleteOrder);
+        // Fetch all data FIRST (read-only, no DB writes)
+        info(`Fetching data for ${affected.length} affected entities before truncate+insert`);
+        const entityData = await collectEntityData(context, affected, rewindFrom);
 
-        // no hash => no EntityChangeLog tracking pollution
-        await syncEntities(context, affected, rewindFrom);
+        // Then wrap truncate + insert in transaction
+        await db.transaction(async (trx) => {
+          await truncateEntities(db, deleteOrder, trx);
+          // no hash => no EntityChangeLog tracking pollution
+          await processEntityData(context, entityData, trx);
+        });
       }
     }
 
     // Tracking cleanup + rebuild BlockChangeLog from rewindFrom
+    // These operations don't need to be in the same transaction as the main entity sync
     await cleanupTracking(db, rewindFrom);
 
     // Rebuild BlockChangeLog (no hash => no tracking)
