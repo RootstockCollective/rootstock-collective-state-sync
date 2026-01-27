@@ -6,7 +6,26 @@ import { createClient } from '../client/createClient';
 import { AppContext } from '../context/types';
 import { ChangeStrategy } from './strategies/types';
 import { blockChangeLogStrategy, revertReorgsStrategy, createNewProposalStrategy, createProposalStateStrategy, createStakingHistoryStrategy } from './strategies';
+import { isReorgCleanupInProgress } from './strategies/reorgCleanupStrategy';
 
+
+/**
+ * Checks if block processing should be skipped
+ * @returns Object with shouldProcess flag and reason if skipping
+ */
+const shouldProcessBlock = async (): Promise<{ shouldProcess: boolean; reason?: string }> => {
+  // Check if reorg cleanup is running
+  if (isReorgCleanupInProgress()) {
+    return {
+      shouldProcess: false,
+      reason: 'reorg cleanup in progress'
+    };
+  }
+
+  // Add other skip conditions here in the future (e.g., maintenance mode, manual pause, etc.)
+  
+  return { shouldProcess: true };
+};
 
 const createBlockHandlerWithStrategies = async (
   context: AppContext,
@@ -21,6 +40,14 @@ const createBlockHandlerWithStrategies = async (
   ];
 
   return async (blockNumber: bigint | null): Promise<void> => {
+    // Check if we should skip this block
+    // Strategies process incrementally, so they will catch up on the next block
+    const { shouldProcess, reason } = await shouldProcessBlock();
+    if (!shouldProcess) {
+      log.info(`Skipping block ${blockNumber} - ${reason}. Strategies will catch up on next block.`);
+      return;
+    }
+
     // Run strategies sequentially to avoid race conditions on database updates
     let totalProcessed = 0;
 

@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 
 import { AppContext } from '../../context/types';
 import { isIgnorableEntity } from '../../utils/entityUtils';
+import { Mutex } from '../../utils/mutex';
 import { ChangeStrategy, ChangeStrategyParams, BlockChangeLog } from './types';
 import { getLastProcessedBlock, findChildEntityIds } from './utils';
 import { syncEntities, collectEntityDataByIds, collectEntityData, processEntityData } from '../../handlers/subgraphSyncer';
@@ -16,6 +17,17 @@ const ENTITY_CHANGELOG_RETENTION_BUFFER = 100n;
 const ENTITY_CHANGELOG_RETENTION_BLOCKS = BigInt(MAX_BLOCKCHANGELOG_CHECK) + REWIND_BUFFER + ENTITY_CHANGELOG_RETENTION_BUFFER;
 
 interface Ancestor { blockNumber: bigint; blockHash: string };
+
+// Mutex to prevent concurrent reorg cleanup operations and block other strategies
+// This ensures only one reorg cleanup runs at a time, preventing database conflicts
+const reorgCleanupMutex = new Mutex();
+
+/**
+ * Check if reorg cleanup is currently in progress
+ */
+export const isReorgCleanupInProgress = (): boolean => {
+  return reorgCleanupMutex.isLocked();
+};
 
 const uniq = <T>(xs: T[]) => Array.from(new Set(xs));
 const clampToZero = (n: bigint) => (n < 0n ? 0n : n);
@@ -270,114 +282,126 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
       return false;
     }
     info(`Reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
-    const ancestor = await findCommonAncestorSparse(client, db, storedNumber, storedHash);
 
-    if (!ancestor) {
-      warn(`No ancestor found in last ${MAX_BLOCKCHANGELOG_CHECK} BlockChangeLog entries; performing full rebuild.`);
-      await performFullRebuild(context);
-      return true;
-    }
+    // Acquire lock before starting reorg cleanup
+    // Note: shouldProcessBlock() is called before strategies run in blockWatcher,
+    // so the lock should always be available here. This lock prevents concurrent cleanup
+    // if this strategy is ever called directly from elsewhere.
+    const releaseLock = reorgCleanupMutex.acquire();
 
-    const rewindFrom = rewindFromAncestor(ancestor);
-    info(`ancestor=${ancestor.blockNumber} rewindFrom=${rewindFrom} (buffer=${REWIND_BUFFER})`);
+    try {
+      const ancestor = await findCommonAncestorSparse(client, db, storedNumber, storedHash);
 
-    // Entities affected by reverted window
-    const affected = await getAffectedEntityTypes(db, schema, rewindFrom, storedNumber);
-    info(`Affected entities: total=${affected.length}`);
+      if (!ancestor) {
+        warn(`No ancestor found in last ${MAX_BLOCKCHANGELOG_CHECK} BlockChangeLog entries; performing full rebuild.`);
+        await performFullRebuild(context);
+        return true;
+      }
 
-    if (affected.length > 0) {
-      const touched = await getTouchedIdsSince(db, rewindFrom, affected);
+      const rewindFrom = rewindFromAncestor(ancestor);
+      info(`ancestor=${ancestor.blockNumber} rewindFrom=${rewindFrom} (buffer=${REWIND_BUFFER})`);
 
-      if (touched.size > 0) {
-        // Lazy expansion: Use FK graph to transitively find all child entities
-        // Run DB SELECT childPk FROM child WHERE fkCol IN (parentIds) to accumulate child IDs transitively
-        // findChildEntityIds already recurses to find all descendants, so we just call it once per touched entity
-        info(`Expanding FK graph transitively for ${touched.size} touched entity types...`);
-        const allIdsToSync = new Map<string, Set<string>>(touched);
+      // Entities affected by reverted window
+      const affected = await getAffectedEntityTypes(db, schema, rewindFrom, storedNumber);
+      info(`Affected entities: total=${affected.length}`);
 
-        // Process entities in topological order for clarity (parents before children)
-        // Note: Using allIdsToSync.get() instead of touched.get() ensures we process
-        // entities that might have been merged from previous iterations, though recursion
-        // in findChildEntityIds already handles all descendants automatically
-        const touchedEntityNames = Array.from(touched.keys());
-        const topoOrder = schema.getUpsertOrder(touchedEntityNames);
+      if (affected.length > 0) {
+        const touched = await getTouchedIdsSince(db, rewindFrom, affected);
 
-        for (const parentEntityName of topoOrder) {
-          const parentIdsSet = allIdsToSync.get(parentEntityName);
-          if (!parentIdsSet) continue;
+        if (touched.size > 0) {
+          // Lazy expansion: Use FK graph to transitively find all child entities
+          // Run DB SELECT childPk FROM child WHERE fkCol IN (parentIds) to accumulate child IDs transitively
+          // findChildEntityIds already recurses to find all descendants, so we just call it once per touched entity
+          info(`Expanding FK graph transitively for ${touched.size} touched entity types...`);
+          const allIdsToSync = new Map<string, Set<string>>(touched);
 
-          const parentIds = Array.from(parentIdsSet);
-          info(`  Finding children of ${parentEntityName} (${parentIds.length} IDs)...`);
+          // Process entities in topological order for clarity (parents before children)
+          // Note: Using allIdsToSync.get() instead of touched.get() ensures we process
+          // entities that might have been merged from previous iterations, though recursion
+          // in findChildEntityIds already handles all descendants automatically
+          const touchedEntityNames = Array.from(touched.keys());
+          const topoOrder = schema.getUpsertOrder(touchedEntityNames);
 
-          // findChildEntityIds recurses to find all descendants (children, grandchildren, etc.)
-          const childIds = await findChildEntityIds(db, schema, parentEntityName, parentIds, dbContext.batchSize);
+          for (const parentEntityName of topoOrder) {
+            const parentIdsSet = allIdsToSync.get(parentEntityName);
+            if (!parentIdsSet) continue;
 
-          // Merge child IDs into the sync map
-          for (const [childEntityName, childIdsSet] of childIds.entries()) {
-            const existing = allIdsToSync.get(childEntityName);
-            if (existing) {
-              childIdsSet.forEach(id => existing.add(id));
-            } else {
-              allIdsToSync.set(childEntityName, new Set(childIdsSet));
+            const parentIds = Array.from(parentIdsSet);
+            info(`  Finding children of ${parentEntityName} (${parentIds.length} IDs)...`);
+
+            // findChildEntityIds recurses to find all descendants (children, grandchildren, etc.)
+            const childIds = await findChildEntityIds(db, schema, parentEntityName, parentIds, dbContext.batchSize);
+
+            // Merge child IDs into the sync map
+            for (const [childEntityName, childIdsSet] of childIds.entries()) {
+              const existing = allIdsToSync.get(childEntityName);
+              if (existing) {
+                childIdsSet.forEach(id => existing.add(id));
+              } else {
+                allIdsToSync.set(childEntityName, new Set(childIdsSet));
+              }
+            }
+
+            if (childIds.size > 0) {
+              const totalChildIds = Array.from(childIds.values()).reduce((sum, ids) => sum + ids.size, 0);
+              info(`    Found ${totalChildIds} child IDs across ${childIds.size} child type(s)`);
             }
           }
 
-          if (childIds.size > 0) {
-            const totalChildIds = Array.from(childIds.values()).reduce((sum, ids) => sum + ids.size, 0);
-            info(`    Found ${totalChildIds} child IDs across ${childIds.size} child type(s)`);
+          const childEntitiesOnly = Array.from(allIdsToSync.keys()).filter(name => !touched.has(name));
+          if (childEntitiesOnly.length > 0) {
+            info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
           }
+
+          // Fetch all data FIRST (read-only, no DB writes)
+          // This batches all subgraph queries efficiently together
+          info(`Fetching data for ${allIdsToSync.size} entity types before delete+insert`);
+          const entityData = await collectEntityDataByIds(context, allIdsToSync);
+
+          // Then wrap delete + insert in transaction
+          await db.transaction(async (trx) => {
+            // Delete touched IDs (CASCADE will delete children)
+            await deleteTouchedIds(db, schema, touched, trx);
+
+            // Rehydrate via id_in queries in topological upsert order
+            const allEntityNames = Array.from(allIdsToSync.keys());
+            const upsertOrder = schema.getUpsertOrder(allEntityNames);
+            info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
+            await processEntityData(context, entityData, trx);
+          });
+        } else {
+          warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
+          const deleteOrder = schema.getDeleteOrder(affected);
+
+          // Fetch all data FIRST (read-only, no DB writes)
+          info(`Fetching data for ${affected.length} affected entities before truncate+insert`);
+          const entityData = await collectEntityData(context, affected, rewindFrom);
+
+          // Then wrap truncate + insert in transaction
+          await db.transaction(async (trx) => {
+            await truncateEntities(db, deleteOrder, trx);
+            // no hash => no EntityChangeLog tracking pollution
+            await processEntityData(context, entityData, trx);
+          });
         }
-
-        const childEntitiesOnly = Array.from(allIdsToSync.keys()).filter(name => !touched.has(name));
-        if (childEntitiesOnly.length > 0) {
-          info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
-        }
-
-        // Fetch all data FIRST (read-only, no DB writes)
-        // This batches all subgraph queries efficiently together
-        info(`Fetching data for ${allIdsToSync.size} entity types before delete+insert`);
-        const entityData = await collectEntityDataByIds(context, allIdsToSync);
-
-        // Then wrap delete + insert in transaction
-        await db.transaction(async (trx) => {
-          // Delete touched IDs (CASCADE will delete children)
-          await deleteTouchedIds(db, schema, touched, trx);
-
-          // Rehydrate via id_in queries in topological upsert order
-          const allEntityNames = Array.from(allIdsToSync.keys());
-          const upsertOrder = schema.getUpsertOrder(allEntityNames);
-          info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
-          await processEntityData(context, entityData, trx);
-        });
-      } else {
-        warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
-        const deleteOrder = schema.getDeleteOrder(affected);
-
-        // Fetch all data FIRST (read-only, no DB writes)
-        info(`Fetching data for ${affected.length} affected entities before truncate+insert`);
-        const entityData = await collectEntityData(context, affected, rewindFrom);
-
-        // Then wrap truncate + insert in transaction
-        await db.transaction(async (trx) => {
-          await truncateEntities(db, deleteOrder, trx);
-          // no hash => no EntityChangeLog tracking pollution
-          await processEntityData(context, entityData, trx);
-        });
       }
+
+      // Tracking cleanup + rebuild BlockChangeLog from rewindFrom
+      // These operations don't need to be in the same transaction as the main entity sync
+      await cleanupTracking(db, rewindFrom);
+
+      // Rebuild BlockChangeLog (no hash => no tracking)
+      await syncEntities(context, ['BlockChangeLog'], rewindFrom);
+
+      // Reset checkpoint to ancestor
+      await updateLastProcessedToAncestor(db, client, ancestor);
+
+      info('Reorg recovery complete.');
+      return true;
+    } finally {
+      // Release lock
+      releaseLock();
     }
-
-    // Tracking cleanup + rebuild BlockChangeLog from rewindFrom
-    // These operations don't need to be in the same transaction as the main entity sync
-    await cleanupTracking(db, rewindFrom);
-
-    // Rebuild BlockChangeLog (no hash => no tracking)
-    await syncEntities(context, ['BlockChangeLog'], rewindFrom);
-
-    // Reset checkpoint to ancestor
-    await updateLastProcessedToAncestor(db, client, ancestor);
-
-    info('Reorg recovery complete.');
-    return true;
   };
 
   return { name: 'reorgCleanupStrategy', detectAndProcess };

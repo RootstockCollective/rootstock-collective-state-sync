@@ -4,7 +4,7 @@ import type { PublicClient } from 'viem';
 
 import type { AppContext } from '../../context/types';
 import type { Entity } from '../../config/types';
-import { revertReorgsStrategy, pruneOldEntityChangeLog } from './reorgCleanupStrategy';
+import { revertReorgsStrategy, pruneOldEntityChangeLog, isReorgCleanupInProgress } from './reorgCleanupStrategy';
 import { findChildEntityIds } from './utils';
 
 describe('Reorg Cleanup Strategy', () => {
@@ -793,6 +793,475 @@ describe('Reorg Cleanup Strategy', () => {
 
       assert.equal(deleteCallCount, 1);
       assert.equal(deleteWhereCalls[0].value, expectedCutoff.toString());
+    });
+  });
+
+  describe('Mutex and concurrency control', () => {
+    beforeEach(() => {
+      // Ensure mutex is unlocked before each test
+      // Wait a bit to ensure any previous operations complete
+      return new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    describe('isReorgCleanupInProgress', () => {
+      it('should return false when mutex is not locked', () => {
+        const result = isReorgCleanupInProgress();
+        assert.equal(result, false);
+      });
+
+      it('should return true when mutex is locked', async () => {
+        const strategy = revertReorgsStrategy();
+        
+        // Mock to simulate reorg detection and lock acquisition
+        // We'll trigger the strategy to acquire the lock by simulating a reorg
+        const storedHash = '0xaaaa';
+        const onchainHash = '0xbbbb';
+        const storedId = Buffer.from(storedHash, 'utf-8').toString('hex');
+        const ancestorHash = '0xmatch';
+        const ancestorId = Buffer.from(ancestorHash, 'utf-8').toString('hex');
+
+        let bclQueryType = 0;
+        mockDb.mock.mockImplementation((tableName: string) => {
+          if (tableName === 'BlockChangeLog') {
+            if (bclQueryType === 0) {
+              bclQueryType++;
+              return {
+                orderBy: mock.fn(() => ({
+                  first: mock.fn(async () => ({
+                    id: storedId,
+                    blockNumber: 1000n,
+                    blockTimestamp: 1n,
+                    updatedEntities: []
+                  }))
+                }))
+              };
+            } else if (bclQueryType === 1) {
+              bclQueryType++;
+              return {
+                where: mock.fn(function (this: any) {
+                  return {
+                    first: mock.fn(async () => null)
+                  };
+                })
+              };
+            } else if (bclQueryType === 2) {
+              bclQueryType++;
+              return {
+                orderBy: () => ({
+                  limit: async () => [
+                    { id: ancestorId, blockNumber: '900', updatedEntities: ['Builder'] }
+                  ]
+                })
+              };
+            } else {
+              return {
+                where: mock.fn(function (this: any) { return this; }),
+                orderBy: mock.fn(async () => []),
+                delete: mock.fn(async () => 1)
+              };
+            }
+          }
+          if (tableName === 'EntityChangeLog') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              whereIn: mock.fn(function (this: any) { return this; }),
+              select: mock.fn(async () => []),
+              delete: mock.fn(async () => 1)
+            };
+          }
+          if (tableName === 'LastProcessedBlock') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              update: mock.fn(async () => 1)
+            };
+          }
+          return createBuilder();
+        });
+
+        let getBlockCallCount = 0;
+        let delayResolve: (() => void) | null = null;
+        const delayPromise = new Promise<void>(resolve => {
+          delayResolve = resolve;
+        });
+
+        mockGetBlock.mock.mockImplementation(async () => {
+          getBlockCallCount++;
+          if (getBlockCallCount === 1) {
+            // First call (reorg detection) - return immediately
+            return {
+              hash: onchainHash as `0x${string}`,
+              number: 1000n,
+              timestamp: 1n
+            } as any;
+          } else if (getBlockCallCount === 2) {
+            // Second call (ancestor check in findCommonAncestorSparse) - delay to hold lock
+            await delayPromise;
+            return {
+              hash: ancestorHash as `0x${string}`,
+              number: 900n,
+              timestamp: 1n
+            } as any;
+          } else {
+            // Third call (updateLastProcessedToAncestor)
+            return {
+              hash: ancestorHash as `0x${string}`,
+              number: 900n,
+              timestamp: 1n
+            } as any;
+          }
+        });
+
+        // Start the strategy execution (it will acquire lock after detecting reorg)
+        const strategyPromise = strategy.detectAndProcess({
+          client: mockClient,
+          context: mockContext,
+          blockNumber: null
+        });
+
+        // Wait a bit to ensure lock is acquired (after reorg detection, before ancestor check completes)
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Check that mutex is locked during execution
+        const isLocked = isReorgCleanupInProgress();
+        assert.equal(isLocked, true, 'Mutex should be locked during reorg cleanup');
+
+        // Resolve delay to allow strategy to continue
+        assert.ok(delayResolve, 'delayResolve should be set');
+        (delayResolve as () => void)();
+
+        // Wait for strategy to complete (releases lock)
+        await strategyPromise;
+
+        // After completion, mutex should be unlocked
+        const isLockedAfter = isReorgCleanupInProgress();
+        assert.equal(isLockedAfter, false, 'Mutex should be unlocked after cleanup completes');
+      });
+    });
+
+    describe('Concurrent reorg cleanup prevention', () => {
+      it('should prevent concurrent reorg cleanup operations', async () => {
+        const strategy = revertReorgsStrategy();
+        const storedHash = '0xaaaa';
+        const onchainHash = '0xbbbb';
+        const storedId = Buffer.from(storedHash, 'utf-8').toString('hex');
+        const ancestorHash = '0xmatch';
+        const ancestorId = Buffer.from(ancestorHash, 'utf-8').toString('hex');
+
+        let bclQueryType = 0;
+        mockDb.mock.mockImplementation((tableName: string) => {
+          if (tableName === 'BlockChangeLog') {
+            if (bclQueryType === 0) {
+              bclQueryType++;
+              return {
+                orderBy: mock.fn(() => ({
+                  first: mock.fn(async () => ({
+                    id: storedId,
+                    blockNumber: 1000n,
+                    blockTimestamp: 1n,
+                    updatedEntities: []
+                  }))
+                }))
+              };
+            } else if (bclQueryType === 1) {
+              bclQueryType++;
+              return {
+                where: mock.fn(function (this: any) {
+                  return {
+                    first: mock.fn(async () => null)
+                  };
+                })
+              };
+            } else if (bclQueryType === 2) {
+              bclQueryType++;
+              return {
+                orderBy: () => ({
+                  limit: async () => [
+                    { id: ancestorId, blockNumber: '900', updatedEntities: ['Builder'] }
+                  ]
+                })
+              };
+            } else {
+              return {
+                where: mock.fn(function (this: any) { return this; }),
+                orderBy: mock.fn(async () => []),
+                delete: mock.fn(async () => 1)
+              };
+            }
+          }
+          if (tableName === 'EntityChangeLog') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              whereIn: mock.fn(function (this: any) { return this; }),
+              select: mock.fn(async () => []),
+              delete: mock.fn(async () => 1)
+            };
+          }
+          if (tableName === 'LastProcessedBlock') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              update: mock.fn(async () => 1)
+            };
+          }
+          return createBuilder();
+        });
+
+        let getBlockCallCount = 0;
+        let delayResolve1: (() => void) | null = null;
+        const delayPromise1 = new Promise<void>(resolve => {
+          delayResolve1 = resolve;
+        });
+
+        mockGetBlock.mock.mockImplementation(async () => {
+          getBlockCallCount++;
+          if (getBlockCallCount === 1) {
+            // First call (reorg detection) - return immediately
+            return {
+              hash: onchainHash as `0x${string}`,
+              number: 1000n,
+              timestamp: 1n
+            } as any;
+          } else if (getBlockCallCount === 2) {
+            // Second call (ancestor check) - delay to hold lock
+            await delayPromise1;
+            return {
+              hash: ancestorHash as `0x${string}`,
+              number: 900n,
+              timestamp: 1n
+            } as any;
+          } else {
+            // Subsequent calls
+            return {
+              hash: ancestorHash as `0x${string}`,
+              number: 900n,
+              timestamp: 1n
+            } as any;
+          }
+        });
+
+        // Start first reorg cleanup
+        const strategyPromise1 = strategy.detectAndProcess({
+          client: mockClient,
+          context: mockContext,
+          blockNumber: null
+        });
+
+        // Wait a bit to ensure first lock is acquired
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Verify mutex is locked
+        assert.equal(isReorgCleanupInProgress(), true, 'First cleanup should lock mutex');
+
+        // Try to start second reorg cleanup (should fail to acquire lock)
+        // The strategy should throw an error when trying to acquire an already-locked mutex
+        let secondStrategyThrew = false;
+        let secondStrategyError: Error | null = null;
+        
+        // Setup a separate mock context for the second attempt
+        // Create a new strategy instance to ensure clean state
+        const strategy2 = revertReorgsStrategy();
+        
+        // Reset query counters for second attempt
+        let bclQueryType2 = 0;
+        
+        // Setup mocks for second attempt - should fail immediately when trying to acquire lock
+        const mockDb2 = mock.fn((tableName: string) => {
+          if (tableName === 'BlockChangeLog') {
+            if (bclQueryType2 === 0) {
+              bclQueryType2++;
+              return {
+                orderBy: mock.fn(() => ({
+                  first: mock.fn(async () => ({
+                    id: storedId,
+                    blockNumber: 1000n,
+                    blockTimestamp: 1n,
+                    updatedEntities: []
+                  }))
+                }))
+              };
+            }
+            // Return empty builder for other BlockChangeLog queries
+            return createBuilder({
+              where: mock.fn(function (this: any) { return this; }),
+              orderBy: mock.fn(async () => [])
+            });
+          }
+          return createBuilder();
+        });
+        
+        const mockClient2 = {
+          getBlock: mock.fn(async () => {
+            return {
+              hash: onchainHash as `0x${string}`,
+              number: 1000n,
+              timestamp: 1n
+            } as any;
+          })
+        } as unknown as PublicClient;
+        
+        const mockContext2 = {
+          ...mockContext,
+          dbContext: {
+            ...mockContext.dbContext,
+            db: mockDb2 as any
+          }
+        };
+        
+        try {
+          const strategyPromise2 = strategy2.detectAndProcess({
+            client: mockClient2,
+            context: mockContext2,
+            blockNumber: null
+          });
+          
+          // Wait for it to try to acquire lock and throw error
+          await strategyPromise2;
+        } catch (error: any) {
+          secondStrategyThrew = true;
+          secondStrategyError = error;
+        }
+        
+        assert.equal(secondStrategyThrew, true, 'Second cleanup should throw error when mutex is locked');
+        assert.ok(secondStrategyError, 'Error should be caught');
+        if (secondStrategyError) {
+          assert.equal(secondStrategyError.message, 'Mutex is already locked', 'Second cleanup should fail to acquire lock');
+        }
+
+        // First cleanup should still be locked
+        assert.equal(isReorgCleanupInProgress(), true, 'Mutex should still be locked by first cleanup');
+
+        // Resolve delay to allow first cleanup to complete
+        assert.ok(delayResolve1, 'delayResolve1 should be set');
+        (delayResolve1 as () => void)();
+
+        // Complete first cleanup
+        await strategyPromise1;
+
+        // After first completes, mutex should be unlocked
+        assert.equal(isReorgCleanupInProgress(), false, 'Mutex should be unlocked after first cleanup');
+      });
+
+      it('should release lock even if reorg cleanup throws an error', async () => {
+        const strategy = revertReorgsStrategy();
+        const storedHash = '0xaaaa';
+        const onchainHash = '0xbbbb';
+        const storedId = Buffer.from(storedHash, 'utf-8').toString('hex');
+
+        mockDb.mock.mockImplementation((tableName: string) => {
+          if (tableName === 'BlockChangeLog') {
+            return {
+              orderBy: mock.fn(() => ({
+                first: mock.fn(async () => ({
+                  id: storedId,
+                  blockNumber: 1000n,
+                  blockTimestamp: 1n,
+                  updatedEntities: []
+                }))
+              }))
+            };
+          }
+          return createBuilder();
+        });
+
+        const ancestorHash = '0xmatch';
+        const ancestorId = Buffer.from(ancestorHash, 'utf-8').toString('hex');
+
+        // Setup mocks for BlockChangeLog queries needed before lock acquisition
+        let bclQueryType = 0;
+        mockDb.mock.mockImplementation((tableName: string) => {
+          if (tableName === 'BlockChangeLog') {
+            if (bclQueryType === 0) {
+              // getLastProcessedBlock
+              bclQueryType++;
+              return {
+                orderBy: mock.fn(() => ({
+                  first: mock.fn(async () => ({
+                    id: storedId,
+                    blockNumber: 1000n,
+                    blockTimestamp: 1n,
+                    updatedEntities: []
+                  }))
+                }))
+              };
+            } else if (bclQueryType === 1) {
+              // findCommonAncestorSparse - where().first()
+              bclQueryType++;
+              return {
+                where: mock.fn(function (this: any) {
+                  return {
+                    first: mock.fn(async () => null)
+                  };
+                })
+              };
+            } else if (bclQueryType === 2) {
+              // findCommonAncestorSparse - orderBy().limit() - return ancestor
+              bclQueryType++;
+              return {
+                orderBy: () => ({
+                  limit: async () => [
+                    { id: ancestorId, blockNumber: '900', updatedEntities: ['Builder'] }
+                  ]
+                })
+              };
+            }
+          }
+          if (tableName === 'EntityChangeLog') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              whereIn: mock.fn(function (this: any) { return this; }),
+              select: mock.fn(async () => []),
+              delete: mock.fn(async () => 1)
+            };
+          }
+          if (tableName === 'LastProcessedBlock') {
+            return {
+              where: mock.fn(function (this: any) { return this; }),
+              update: mock.fn(async () => {
+                // Throw error during updateLastProcessedToAncestor (after lock is acquired)
+                throw new Error('Database update error');
+              })
+            };
+          }
+          return createBuilder();
+        });
+
+        // Make getBlock calls succeed until the error in updateLastProcessedToAncestor
+        let getBlockCallCount = 0;
+        mockGetBlock.mock.mockImplementation(async () => {
+          getBlockCallCount++;
+          if (getBlockCallCount === 1) {
+            // First call succeeds (reorg detection) - lock is acquired after this
+            return {
+              hash: onchainHash as `0x${string}`,
+              number: 1000n,
+              timestamp: 1n
+            } as any;
+          } else {
+            // Subsequent calls succeed (ancestor check, etc.)
+            return {
+              hash: ancestorHash as `0x${string}`,
+              number: 900n,
+              timestamp: 1n
+            } as any;
+          }
+        });
+
+        // Strategy should throw, but lock should still be released
+        let errorThrown = false;
+        try {
+          await strategy.detectAndProcess({
+            client: mockClient,
+            context: mockContext,
+            blockNumber: null
+          });
+        } catch {
+          errorThrown = true;
+        }
+
+        assert.equal(errorThrown, true, 'Strategy should throw error');
+        
+        // Lock should be released even after error (finally block should execute)
+        assert.equal(isReorgCleanupInProgress(), false, 'Mutex should be released even after error');
+      });
     });
   });
 });
