@@ -18,9 +18,9 @@ subgraphProviders:
     apiKey: 56839
   usd-vault:
     url: "https://api.studio.thegraph.com/query"
-    id: "usd-vault-testnet/version/latest"
+    id: "rootstockcollective-usd-vault-testnet/version/latest"
     maxRowsPerRequest: 1000
-    apiKey: 1714703
+    apiKey: 121925
 contracts:
   - name: BackersManager
     address: "0xb7143af8C7afa3a170E183bE24127bF781Fb89B7"
