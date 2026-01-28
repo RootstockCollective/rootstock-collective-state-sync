@@ -1,4 +1,4 @@
-import { info, warn, debug } from 'loglevel';
+import log from 'loglevel';
 import { Hex, PublicClient } from 'viem';
 import type { Knex } from 'knex';
 
@@ -62,7 +62,7 @@ const findCommonAncestorSparse = async (
       const onchain = await client.getBlock({ blockNumber: bn });
       if (onchain.hash.toLowerCase() === convertDbIdToHash(stored.id).toLowerCase()) return { blockNumber: bn, blockHash: onchain.hash };
     } catch (e) {
-      warn(`Error checking block ${stored.blockNumber}: ${e}`);
+      log.warn(`Error checking block ${stored.blockNumber}: ${e}`);
     }
   }
 
@@ -126,12 +126,12 @@ const cleanupTracking = async (
   const deletedEcl = await db('EntityChangeLog')
     .where('blockNumber', '>=', rewindFrom.toString())
     .delete();
-  info(`Deleted ${deletedEcl} EntityChangeLog rows with syncFromBlock >= ${rewindFrom}`);
+  log.info(`Deleted ${deletedEcl} EntityChangeLog rows with syncFromBlock >= ${rewindFrom}`);
 
   const deletedBcl = await db<BlockChangeLog>('BlockChangeLog')
     .where('blockNumber', '>', rewindFrom.toString())
     .delete();
-  info(`Deleted ${deletedBcl} BlockChangeLog rows with blockNumber > ${rewindFrom}`);
+  log.info(`Deleted ${deletedBcl} BlockChangeLog rows with blockNumber > ${rewindFrom}`);
 };
 
 /**
@@ -155,7 +155,7 @@ export const pruneOldEntityChangeLog = async (
     .delete();
 
   if (deleted > 0) {
-    info(`Pruned ${deleted} old EntityChangeLog entries older than block ${cutoffBlock} (retention: ${ENTITY_CHANGELOG_RETENTION_BLOCKS} blocks)`);
+    log.info(`Pruned ${deleted} old EntityChangeLog entries older than block ${cutoffBlock} (retention: ${ENTITY_CHANGELOG_RETENTION_BLOCKS} blocks)`);
   }
 };
 
@@ -214,7 +214,7 @@ const performFullRebuild = async (
   const { dbContext, schema } = context;
   const { db } = dbContext;
 
-  info('Performing full rebuild: deleting all collective-rewards tables');
+  log.info('Performing full rebuild: deleting all collective-rewards tables');
 
   // Get all collective-rewards entities (excluding tracking entities)
   const allCollectiveRewardsEntities: string[] = [];
@@ -229,24 +229,24 @@ const performFullRebuild = async (
 
   // Fetch all data FIRST (read-only, no DB writes)
   // This batches all subgraph queries efficiently together
-  info(`Fetching data for ${allCollectiveRewardsEntities.length} collective-rewards entities before delete+insert`);
+  log.info(`Fetching data for ${allCollectiveRewardsEntities.length} collective-rewards entities before delete+insert`);
   const entityData = await collectEntityData(context, allCollectiveRewardsEntities);
 
   // Then wrap all delete + insert operations in transaction
   await db.transaction(async (trx) => {
     if (allCollectiveRewardsEntities.length > 0) {
       const deleteOrder = schema.getDeleteOrder(allCollectiveRewardsEntities);
-      info(`Deleting ${deleteOrder.length} collective-rewards entities in FK-safe order`);
+      log.info(`Deleting ${deleteOrder.length} collective-rewards entities in FK-safe order`);
       await truncateEntities(db, deleteOrder, trx);
     }
 
     // Delete tracking tables
-    info('Deleting tracking tables');
+    log.info('Deleting tracking tables');
     await trx('EntityChangeLog').delete();
     await trx('BlockChangeLog').delete();
 
     // Reset LastProcessedBlock to initial state
-    info('Resetting LastProcessedBlock to initial state');
+    log.info('Resetting LastProcessedBlock to initial state');
     await trx('LastProcessedBlock')
       .insert({
         id: true,
@@ -258,11 +258,11 @@ const performFullRebuild = async (
       .merge();
 
     // Sync all entities from scratch (like initial sync)
-    info(`Resyncing ${allCollectiveRewardsEntities.length} collective-rewards entities from scratch`);
+    log.info(`Resyncing ${allCollectiveRewardsEntities.length} collective-rewards entities from scratch`);
     await processEntityData(context, entityData, trx);
   });
 
-  info('Full rebuild complete. All collective-rewards tables have been deleted and resynced.');
+  log.info('Full rebuild complete. All collective-rewards tables have been deleted and resynced.');
 };
 
 export const revertReorgsStrategy = (): ChangeStrategy => {
@@ -273,15 +273,16 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
     const { dbContext, schema } = context;
     const { db } = dbContext;
 
-    const { id, blockNumber: storedNumber } = await getLastProcessedBlock(db);
-    if (storedNumber === 0n) return false;
+    const { id, blockNumber } = await getLastProcessedBlock(db);
     const storedHash = convertDbIdToHash(id);
+    const storedNumber = BigInt(blockNumber);
+    if (storedNumber === 0n) return false;
     const onchain = await client.getBlock({ blockNumber: storedNumber });
     if (onchain.hash.toLowerCase() === storedHash.toLowerCase()) {
-      debug(`No reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
+      log.debug(`No reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
       return false;
     }
-    info(`Reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
+    log.info(`Reorg detected @${storedNumber}. stored=${storedHash} onchain=${onchain.hash}`);
 
     // Acquire lock before starting reorg cleanup
     // Note: shouldProcessBlock() is called before strategies run in blockWatcher,
@@ -293,17 +294,17 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
       const ancestor = await findCommonAncestorSparse(client, db, storedNumber, storedHash);
 
       if (!ancestor) {
-        warn(`No ancestor found in last ${MAX_BLOCKCHANGELOG_CHECK} BlockChangeLog entries; performing full rebuild.`);
+        log.warn(`No ancestor found in last ${MAX_BLOCKCHANGELOG_CHECK} BlockChangeLog entries; performing full rebuild.`);
         await performFullRebuild(context);
         return true;
       }
 
       const rewindFrom = rewindFromAncestor(ancestor);
-      info(`ancestor=${ancestor.blockNumber} rewindFrom=${rewindFrom} (buffer=${REWIND_BUFFER})`);
+      log.info(`ancestor=${ancestor.blockNumber} rewindFrom=${rewindFrom} (buffer=${REWIND_BUFFER})`);
 
       // Entities affected by reverted window
       const affected = await getAffectedEntityTypes(db, schema, rewindFrom, storedNumber);
-      info(`Affected entities: total=${affected.length}`);
+      log.info(`Affected entities: total=${affected.length}`);
 
       if (affected.length > 0) {
         const touched = await getTouchedIdsSince(db, rewindFrom, affected);
@@ -312,7 +313,7 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
           // Lazy expansion: Use FK graph to transitively find all child entities
           // Run DB SELECT childPk FROM child WHERE fkCol IN (parentIds) to accumulate child IDs transitively
           // findChildEntityIds already recurses to find all descendants, so we just call it once per touched entity
-          info(`Expanding FK graph transitively for ${touched.size} touched entity types...`);
+          log.info(`Expanding FK graph transitively for ${touched.size} touched entity types...`);
           const allIdsToSync = new Map<string, Set<string>>(touched);
 
           // Process entities in topological order for clarity (parents before children)
@@ -327,7 +328,7 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
             if (!parentIdsSet) continue;
 
             const parentIds = Array.from(parentIdsSet);
-            info(`  Finding children of ${parentEntityName} (${parentIds.length} IDs)...`);
+            log.info(`  Finding children of ${parentEntityName} (${parentIds.length} IDs)...`);
 
             // findChildEntityIds recurses to find all descendants (children, grandchildren, etc.)
             const childIds = await findChildEntityIds(db, schema, parentEntityName, parentIds, dbContext.batchSize);
@@ -344,18 +345,18 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
 
             if (childIds.size > 0) {
               const totalChildIds = Array.from(childIds.values()).reduce((sum, ids) => sum + ids.size, 0);
-              info(`    Found ${totalChildIds} child IDs across ${childIds.size} child type(s)`);
+              log.info(`    Found ${totalChildIds} child IDs across ${childIds.size} child type(s)`);
             }
           }
 
           const childEntitiesOnly = Array.from(allIdsToSync.keys()).filter(name => !touched.has(name));
           if (childEntitiesOnly.length > 0) {
-            info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
+            log.info(`Expanded to ${allIdsToSync.size} entity types total (${childEntitiesOnly.length} child types added): ${Array.from(allIdsToSync.keys()).join(', ')}`);
           }
 
           // Fetch all data FIRST (read-only, no DB writes)
           // This batches all subgraph queries efficiently together
-          info(`Fetching data for ${allIdsToSync.size} entity types before delete+insert`);
+          log.info(`Fetching data for ${allIdsToSync.size} entity types before delete+insert`);
           const entityData = await collectEntityDataByIds(context, allIdsToSync);
 
           // Then wrap delete + insert in transaction
@@ -366,15 +367,15 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
             // Rehydrate via id_in queries in topological upsert order
             const allEntityNames = Array.from(allIdsToSync.keys());
             const upsertOrder = schema.getUpsertOrder(allEntityNames);
-            info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
+            log.info(`Resyncing ${allEntityNames.length} entity types in FK-safe upsert order: ${upsertOrder.join(', ')}`);
             await processEntityData(context, entityData, trx);
           });
         } else {
-          warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
+          log.warn(`No touched IDs found since ${rewindFrom}. Falling back to truncate+resync for affected entities.`);
           const deleteOrder = schema.getDeleteOrder(affected);
 
           // Fetch all data FIRST (read-only, no DB writes)
-          info(`Fetching data for ${affected.length} affected entities before truncate+insert`);
+          log.info(`Fetching data for ${affected.length} affected entities before truncate+insert`);
           const entityData = await collectEntityData(context, affected, rewindFrom);
 
           // Then wrap truncate + insert in transaction
@@ -396,7 +397,7 @@ export const revertReorgsStrategy = (): ChangeStrategy => {
       // Reset checkpoint to ancestor
       await updateLastProcessedToAncestor(db, client, ancestor);
 
-      info('Reorg recovery complete.');
+      log.info('Reorg recovery complete.');
       return true;
     } finally {
       // Release lock

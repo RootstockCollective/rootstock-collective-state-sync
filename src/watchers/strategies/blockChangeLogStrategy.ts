@@ -20,7 +20,7 @@ export const blockChangeLogStrategy = (): ChangeStrategy => {
   }): Promise<boolean> => {
     const { context } = params;
 
-    const { blockNumber: lastStoredBlockNumber } = await getLastProcessedBlock(context.dbContext.db);
+    const { blockNumber: lastStoredBlockNumber, id: lastStoredBlockHash } = await getLastProcessedBlock(context.dbContext.db);
     const fromBlock = BigInt(lastStoredBlockNumber);
 
     const subgraphName = context.schema.entities.get(schemaName)?.subgraphProvider;
@@ -79,6 +79,14 @@ export const blockChangeLogStrategy = (): ChangeStrategy => {
 
     const blockChangeLogResults = results[schemaName];
     const blockChangeLogs = blockChangeLogResults as BlockChangeLog[];
+    const [lastBlockChangeLog] = blockChangeLogs;
+    const lastBlockNumber = BigInt(lastBlockChangeLog.blockNumber);
+
+    if (lastBlockChangeLog.id === lastStoredBlockHash.toString()) {
+      log.info(`${STRATEGY_NAME}: No new changes since last processed event`);
+
+      return false;
+    }
 
     // Get all unique entities that were updated in any of these blocks
     const entitiesToSync = Array.from(new Set<string>(blockChangeLogs.flatMap(result => result.updatedEntities || [])));
@@ -101,14 +109,14 @@ export const blockChangeLogStrategy = (): ChangeStrategy => {
       const entityData = await syncEntities(
         context,
         validEntities,
-        lastProcessedBlock.block.number
+        lastBlockNumber
       );
 
-      await trackEntityIds(context.dbContext, entityData, lastProcessedBlock.block.number, lastProcessedBlock.block.hash);
+      await trackEntityIds(context.dbContext, entityData, lastBlockNumber, lastBlockChangeLog.id);
 
       // Prune old EntityChangeLog entries to prevent unbounded growth
       // Only keep entries within the reorg detection window
-      await pruneOldEntityChangeLog(context.dbContext.db, lastProcessedBlock.block.number);
+      await pruneOldEntityChangeLog(context.dbContext.db, lastBlockNumber);
 
       return true;
     }

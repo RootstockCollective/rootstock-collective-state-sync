@@ -177,10 +177,9 @@ const syncEntities = async (
   context: AppContext,
   entities: string[],
   blockNumber?: bigint,
-  trx?: Knex.Transaction
 ): Promise<EntityDataCollection> => {
   const entityData = await collectEntityData(context, entities, blockNumber);
-  await processEntityData(context, entityData, trx);
+  await processEntityData(context, entityData);
 
   return entityData;
 };
