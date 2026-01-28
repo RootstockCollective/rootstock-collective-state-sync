@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import knex, { Knex } from 'knex';
-import { Column } from '../config/types';
+import { Column, Entity } from '../config/types';
 import { ArrayColumnType } from './types';
-import { applyNullableConstraint, createArrayColumn, createColumn } from './dbCreator';
+import { applyNullableConstraint, createArrayColumn, createColumn, validatePrimaryKeyColumns } from './dbCreator';
 
 describe('dbCreator nullable handling', () => {
   describe('applyNullableConstraint', () => {
@@ -89,6 +89,127 @@ describe('dbCreator nullable handling', () => {
       assert.ok(!createSql.includes('"nullable_tags" text[] not null'));
       assert.ok(createSql.includes('"required_tags" text[] not null'));
       assert.ok(createSql.includes('"default_tags" text[] not null'));
+    });
+  });
+
+  describe('validatePrimaryKeyColumns', () => {
+    it('should accept entity with single primary key', () => {
+      const entity: Entity = {
+        name: 'TestEntity',
+        primaryKey: ['id'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'id', type: 'String' },
+          { name: 'name', type: 'String' }
+        ]
+      };
+
+      // Should not throw
+      assert.doesNotThrow(() => validatePrimaryKeyColumns(entity));
+    });
+
+    it('should reject entity with composite primary key', () => {
+      const entity: Entity = {
+        name: 'Vote',
+        primaryKey: ['proposalId', 'voterId'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'proposalId', type: 'String' },
+          { name: 'voterId', type: 'Bytes' },
+          { name: 'support', type: 'Boolean' }
+        ]
+      };
+
+      assert.throws(
+        () => validatePrimaryKeyColumns(entity),
+        {
+          message: /Composite keys are not supported because EntityChangeLog and the subgraph protocol do not allow them/
+        }
+      );
+    });
+
+    it('should reject entity with empty primary key', () => {
+      const entity: Entity = {
+        name: 'TestEntity',
+        primaryKey: [],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'id', type: 'String' }
+        ]
+      };
+
+      assert.throws(
+        () => validatePrimaryKeyColumns(entity),
+        {
+          message: /must have at least one primary key column/
+        }
+      );
+    });
+
+    it('should reject nullable primary key column', () => {
+      const entity: Entity = {
+        name: 'TestEntity',
+        primaryKey: ['id'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'id', type: 'String', nullable: true },
+          { name: 'name', type: 'String' }
+        ]
+      };
+
+      assert.throws(
+        () => validatePrimaryKeyColumns(entity),
+        {
+          message: /cannot be nullable/
+        }
+      );
+    });
+
+    it('should accept entity with non-nullable primary key', () => {
+      const entity: Entity = {
+        name: 'TestEntity',
+        primaryKey: ['id'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'id', type: 'String', nullable: false },
+          { name: 'name', type: 'String', nullable: true }
+        ]
+      };
+
+      assert.doesNotThrow(() => validatePrimaryKeyColumns(entity));
+    });
+
+    it('should accept entity with primary key without explicit nullable flag', () => {
+      const entity: Entity = {
+        name: 'TestEntity',
+        primaryKey: ['id'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'id', type: 'String' }, // nullable not specified, defaults to not nullable
+          { name: 'name', type: 'String' }
+        ]
+      };
+
+      assert.doesNotThrow(() => validatePrimaryKeyColumns(entity));
+    });
+
+    it('should include entity name in composite key error message', () => {
+      const entity: Entity = {
+        name: 'MyCustomEntity',
+        primaryKey: ['a', 'b'],
+        subgraphProvider: 'test',
+        columns: [
+          { name: 'a', type: 'String' },
+          { name: 'b', type: 'String' }
+        ]
+      };
+
+      assert.throws(
+        () => validatePrimaryKeyColumns(entity),
+        {
+          message: /Entity 'MyCustomEntity'/
+        }
+      );
     });
   });
 });

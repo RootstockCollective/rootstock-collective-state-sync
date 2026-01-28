@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { watchBlocks } from './blockWatcher';
+import { isReorgCleanupInProgress } from './strategies/reorgCleanupStrategy';
 
 /**
  * Block Watcher Tests
@@ -31,6 +32,23 @@ describe('Block Watcher Unit Tests', () => {
     it('should be an async function', () => {
       // watchBlocks returns a Promise
       assert.equal(watchBlocks.constructor.name, 'AsyncFunction');
+    });
+  });
+
+  describe('Reorg cleanup integration', () => {
+    it('should have access to isReorgCleanupInProgress function', () => {
+      // Verify that blockWatcher can check reorg cleanup status
+      assert.equal(typeof isReorgCleanupInProgress, 'function');
+      
+      // Should return boolean
+      const result = isReorgCleanupInProgress();
+      assert.equal(typeof result, 'boolean');
+    });
+
+    it('should return false when no reorg cleanup is in progress', () => {
+      // When mutex is not locked, should return false
+      const result = isReorgCleanupInProgress();
+      assert.equal(result, false);
     });
   });
 });

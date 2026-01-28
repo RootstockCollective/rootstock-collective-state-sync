@@ -4,6 +4,7 @@ import { getConfig } from '../config/config';
 import { createContexts } from '../context/create';
 import { createDb } from '../handlers/dbCreator';
 import { syncEntities } from '../handlers/subgraphSyncer';
+import { isIgnorableEntity } from '../utils/entityUtils';
 import { watchBlocks } from '../watchers/blockWatcher';
 
 const main = async () => {
@@ -20,7 +21,8 @@ const main = async () => {
     const entities = await createDb(context, productionMode, initializeDb);
 
     // Initial sync of entities
-    await syncEntities(context, entities.filter(entity => entity !== 'LastProcessedBlock')); // TODO: We should change this a little bit, so that we don't have to filter out LastProcessedBlock here in this hardcoded way
+    // Filter out local tracking tables that aren't synced from subgraph
+    await syncEntities(context, entities.filter(entity => !isIgnorableEntity(entity)));
 
     if (!productionMode) {
       process.exit(0);

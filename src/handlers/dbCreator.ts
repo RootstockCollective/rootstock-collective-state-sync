@@ -70,9 +70,26 @@ const createColumn = (
 };
 
 /**
- * Validates that primary key columns are not nullable
+ * Validates that primary key columns are not nullable and that composite keys are not used
  */
 const validatePrimaryKeyColumns = (entity: Entity): void => {
+  // Ensure primary key exists
+  if (entity.primaryKey.length === 0) {
+    throw new Error(
+      `Entity '${entity.name}' must have at least one primary key column`
+    );
+  }
+
+  // Reject composite keys - EntityChangeLog and subgraph protocol don't support them
+  if (entity.primaryKey.length > 1) {
+    throw new Error(
+      `Entity '${entity.name}' has a composite primary key [${entity.primaryKey.join(', ')}]. ` +
+      'Composite keys are not supported because EntityChangeLog and the subgraph protocol do not allow them. ' +
+      'Please use a single primary key column.'
+    );
+  }
+
+  // Validate that primary key columns are not nullable
   for (const column of entity.columns) {
     if (entity.primaryKey.includes(column.name) && column.nullable === true) {
       throw new Error(
@@ -172,6 +189,11 @@ const createTable = async (
 
     // Add primary key constraint
     table.primary(entity.primaryKey);
+
+    // Add specific indexes for EntityChangeLog to optimize reorg cleanup queries
+    if (entity.name === 'EntityChangeLog') {
+      table.index(['blockNumber', 'entityName']);
+    }
   });
 
   log.info(`Created table: ${entity.name}`);
@@ -233,4 +255,4 @@ const getExistingTables = async (trx: Knex.Transaction): Promise<string[]> => {
   return result.map((row) => row.table_name);
 };
 
-export { createDb, applyNullableConstraint, createArrayColumn, createColumn };
+export { createDb, applyNullableConstraint, createArrayColumn, createColumn, validatePrimaryKeyColumns };
