@@ -11,7 +11,7 @@ import log from 'loglevel';
 import { BatchableStrategy, ChangeStrategyParams, Proposal } from './types';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
 import { executeRequests, GraphQLRequest, GraphQlContext } from '../../context/subgraphProvider';
-import { syncEntities, processEntityData } from '../../handlers/subgraphSyncer';
+import { processEntityData } from '../../handlers/subgraphSyncer';
 import { getConfig } from '../../config/config';
 import { EntityDataCollection } from '../../handlers/types';
 import { AppContext } from '../../context/types';
@@ -67,7 +67,8 @@ function getSubgraphContext(appContext: AppContext): GraphQlContext | null {
 }
 
 /**
- * Builds the GraphQL queries for fetching proposals.
+ * Builds GraphQL queries for Proposal, Account, and VoteCast.
+ * All queries are batched into a single HTTP request.
  */
 async function getQueries(params: ChangeStrategyParams): Promise<GraphQLRequest[]> {
   const { context, blockNumber } = params;
@@ -82,18 +83,22 @@ async function getQueries(params: ChangeStrategyParams): Promise<GraphQLRequest[
   }
 
   const fromBlock = getFromBlock(blockNumber);
+  const maxRows = graphqlContext.pagination.maxRowsPerRequest;
 
   return [
     createEntityQuery(context.schema, 'Proposal', {
-      first: graphqlContext.pagination.maxRowsPerRequest,
+      first: maxRows,
       order: { by: 'createdAtBlock', direction: 'desc' },
       filters: { createdAtBlock_gt: fromBlock }
-    })
+    }),
+    createEntityQuery(context.schema, 'Account', { first: maxRows }),
+    createEntityQuery(context.schema, 'VoteCast', { first: maxRows })
   ];
 }
 
 /**
- * Processes batch results - upserts proposals and syncs related entities.
+ * Processes batch results - upserts all entities from the batch.
+ * No additional queries needed since Account and VoteCast are in the batch.
  */
 async function processBatchResults(
   results: EntityDataCollection,
@@ -106,25 +111,22 @@ async function processBatchResults(
   }
 
   const proposals = (results['Proposal'] as Proposal[]) || [];
+  const accounts = results['Account'] || [];
+  const voteCasts = results['VoteCast'] || [];
 
   if (proposals.length === 0) {
     log.debug('[NewProposal] No proposals found');
     return false;
   }
 
-  log.info(`[NewProposal] Processing ${proposals.length} proposals`);
+  const totalRecords = proposals.length + accounts.length + voteCasts.length;
+  log.info(`[NewProposal] Processing ${totalRecords} records (${proposals.length} proposals)`);
 
-  // Upsert the proposals we received
-  await processEntityData(context, { Proposal: proposals });
-
-  // Sync related entities
-  const relatedEntities = ['Account', 'VoteCast'].filter(
-    name => context.schema.entities.has(name)
-  );
-
-  if (relatedEntities.length > 0) {
-    await syncEntities(context, relatedEntities, getFromBlock(blockNumber));
-  }
+  await processEntityData(context, {
+    Proposal: proposals,
+    Account: accounts,
+    VoteCast: voteCasts
+  });
 
   lastProcessedBlock = blockNumber;
   return true;
