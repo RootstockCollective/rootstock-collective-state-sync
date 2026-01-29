@@ -160,5 +160,5 @@ const syncEntities = async (
   await processEntityData(context, entityData);
 };
 
-export { syncEntities };
+export { syncEntities, processEntityData };
 
