@@ -9,6 +9,8 @@ subgraphProviders:
     id: "deployments/id/QmVVVUcjuRSNQBjd3vUsVkdEX98HFZrxDYkFg6j8e1Tuvg"
   governance:
     id: "deployments/id/QmXWSRQqRXvVZf5FS2nHBmyQjicdssziZVjqTtpd5uSyLv"
+  usd-vault:
+    id: "deployments/id/QmYxgihYEc3xiyxN7BFVVHoB7RMRPMLhk6ajswRdqH8An3"
 contracts:
   - name: BackersManager
     address: "0x7995C48D987941291d8008695A4133E557a11530"
