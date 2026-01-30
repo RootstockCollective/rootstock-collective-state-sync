@@ -1,0 +1,19 @@
+app:
+  productionMode: true
+  initializeDb: true
+blockchain:
+  network: "testnet"
+subgraphProviders:
+  collective-rewards:
+    id: "deployments/id/QmZcoGmwn5SgG24Pt2SuPzfpzjbr48paiVAwSkURWRARaq"
+  governance:
+    id: "deployments/id/QmQHsUPbNSo3gY6JMKADKe7KuUA9zRXuwhfWt9PQCUGsLv"
+contracts:
+  - name: BackersManager
+    address: "0xd520cB42C46115762C02e4340646C2051ca3406d"
+  - name: BuilderRegistry
+    address: "0x5FC1DD934ef2E6b5C4a433A3Ec0A1326834B0f42"
+  - name: RewardDistributor
+    address: "0x4DCD1859824e0000C6ab8aC29b017Df0834Cc3dd"
+  - name: Governor
+    address: "0x25b7eb94f76cC682A402DA980e6599478a596379"
