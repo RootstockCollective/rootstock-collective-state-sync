@@ -50,9 +50,14 @@ export async function executeBatchedStrategies(
     return results;
   }
 
-  log.debug(`[BatchExecutor] Processing ${strategies.length} batchable strategies`);
+  log.debug(`[batchExecutor:executeBatchedStrategies] Processing ${strategies.length} strategies`);
 
-  const batchGroups = await collectQueriesByEndpoint(strategies, params);
+  const { groups: batchGroups, failed } = await groupQueriesByEndpoint(strategies, params);
+
+  // Mark failed strategies
+  for (const name of failed) {
+    results.set(name, false);
+  }
 
   for (const [endpoint, group] of batchGroups) {
     await processBatchGroup(endpoint, group, params, results);
@@ -62,41 +67,51 @@ export async function executeBatchedStrategies(
 }
 
 /**
- * Collects queries from all strategies and groups them by subgraph endpoint.
+ * Collects queries from strategies and groups them by endpoint.
+ * 
+ * Example: Two strategies targeting the same subgraph get grouped together:
+ *   Input:  [ProposalStrategy, StakingStrategy] both → governance subgraph
+ *   Output: Map { "https://api.thegraph.com/governance" → { queries: [...], strategies: [...] } }
+ * 
+ * @returns Map of endpoint URL → batch group, plus list of failed strategies
  */
-async function collectQueriesByEndpoint(
+async function groupQueriesByEndpoint(
   strategies: BatchableStrategy[],
   params: ChangeStrategyParams
-): Promise<Map<string, BatchGroup>> {
+): Promise<{ groups: Map<string, BatchGroup>; failed: string[] }> {
   const groups = new Map<string, BatchGroup>();
+  const failed: string[] = [];
 
   for (const strategy of strategies) {
     try {
       const graphqlContext = strategy.getSubgraphContext(params.context);
       if (!graphqlContext) {
-        log.warn(`[BatchExecutor] Strategy ${strategy.name} returned no subgraph context`);
+        log.warn(`[batchExecutor:groupQueriesByEndpoint] ${strategy.name} has no subgraph context`);
+        failed.push(strategy.name);
         continue;
       }
 
       const queries = await strategy.getQueries(params);
       if (queries.length === 0) {
-        log.debug(`[BatchExecutor] Strategy ${strategy.name} has no queries to execute`);
+        log.debug(`[batchExecutor:groupQueriesByEndpoint] ${strategy.name} has no queries`);
         continue;
       }
 
-      addQueriesToGroup(groups, graphqlContext, strategy, queries);
+      addToEndpointGroup(groups, graphqlContext, strategy, queries);
     } catch (error) {
-      log.error(`[BatchExecutor] Error collecting queries from ${strategy.name}:`, error);
+      log.error(`[batchExecutor:groupQueriesByEndpoint] ${strategy.name} failed:`, error);
+      failed.push(strategy.name);
     }
   }
 
-  return groups;
+  return { groups, failed };
 }
 
 /**
- * Adds queries from a strategy to the appropriate batch group.
+ * Adds queries to the batch group for their endpoint.
+ * Creates a new group if one doesn't exist for that endpoint.
  */
-function addQueriesToGroup(
+function addToEndpointGroup(
   groups: Map<string, BatchGroup>,
   graphqlContext: GraphQlContext,
   strategy: BatchableStrategy,

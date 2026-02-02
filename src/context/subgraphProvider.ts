@@ -23,7 +23,22 @@ interface HttpRequestLogEntry {
   duration?: number;
 }
 
-// Request counting and metrics - scoped to avoid redeclaration errors
+/** Maximum entries to keep in metrics history to prevent memory leaks */
+const MAX_METRICS_HISTORY = 1000;
+
+/**
+ * Metrics for monitoring GraphQL request patterns.
+ * 
+ * Terminology:
+ * - requestCount: Number of times executeRequests() was called (may contain multiple queries)
+ * - httpRequestCount: Number of actual HTTP requests made (after batching)
+ * - queryCount: Number of individual GraphQL queries in a single request
+ * 
+ * Example: 5 queries batched into 1 HTTP request
+ *   requestCount: 1 (one call to executeRequests)
+ *   httpRequestCount: 1 (one HTTP request made)
+ *   queryCount: 5 (five queries in that request)
+ */
 const metrics: {
   requestCount: number;
   requestHistory: RequestHistoryEntry[];
@@ -35,6 +50,16 @@ const metrics: {
   httpRequestCount: 0,
   httpRequestLog: []
 };
+
+/** Trims metrics arrays to prevent unbounded growth */
+function trimMetricsHistory(): void {
+  if (metrics.requestHistory.length > MAX_METRICS_HISTORY) {
+    metrics.requestHistory = metrics.requestHistory.slice(-MAX_METRICS_HISTORY);
+  }
+  if (metrics.httpRequestLog.length > MAX_METRICS_HISTORY) {
+    metrics.httpRequestLog = metrics.httpRequestLog.slice(-MAX_METRICS_HISTORY);
+  }
+}
 
 interface GraphQLMetadata {
     block: {
@@ -68,10 +93,10 @@ interface GraphQlContext {
 }
 
 /**
- * Redacts API key from endpoint URL for safe logging.
- * Replaces the API key segment with '***' to prevent credential exposure in logs.
+ * Masks the API key in a URL for safe logging.
+ * Example: https://api.thegraph.com/abc123/subgraph -> https://api.thegraph.com/*** /subgraph
  */
-function redactEndpoint(endpoint: string): string {
+function maskApiKey(endpoint: string): string {
   try {
     const url = new URL(endpoint);
     const segments = url.pathname.split('/').filter(Boolean);
@@ -109,13 +134,13 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     error?: string;
   } = {
     timestamp: startTime,
-    provider: redactEndpoint(context.endpoint),
+    provider: maskApiKey(context.endpoint),
     queryCount,
     success: false
   };
   metrics.requestHistory.push(requestEntry);
 
-  log.info(`[RequestCounter] Request #${metrics.requestCount}: ${queryCount} query(ies) to ${redactEndpoint(context.endpoint)}`);
+  log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount}: ${queryCount} queries to ${maskApiKey(context.endpoint)}`);
 
   // Count queries in batch for HTTP metrics
   // Use requests.length directly - more reliable than regex parsing
@@ -134,7 +159,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     // This ensures we count all HTTP requests, not just successful ones
     metrics.httpRequestCount++;
     const httpRequestLogEntry: HttpRequestLogEntry = {
-      url: redactEndpoint(context.endpoint),
+      url: maskApiKey(context.endpoint),
       method: 'POST',
       timestamp: httpStartTime,
       queryCount: actualQueryCount
@@ -155,7 +180,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     httpRequestLogEntry.duration = httpDuration;
     metrics.httpRequestLog.push(httpRequestLogEntry);
 
-    log.info(`[HTTP Interceptor] Request #${metrics.httpRequestCount}: ${actualQueryCount} query(ies) to ${redactEndpoint(context.endpoint)} (${httpDuration}ms)`);
+    log.info(`[subgraphProvider:executeRequests] HTTP #${metrics.httpRequestCount}: ${actualQueryCount} queries (${httpDuration}ms)`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -208,7 +233,8 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     const duration = Date.now() - startTime;
     requestEntry.success = true;
     requestEntry.duration = duration;
-    log.info(`[RequestCounter] Request #${metrics.requestCount} completed in ${duration}ms`);
+    log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount} completed in ${duration}ms`);
+    trimMetricsHistory();
 
     return metadata ? { ...results, _meta: metadata } as EntityDataCollection<WithMetadata> : results;
   } catch (error) {
@@ -225,18 +251,17 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
       // Estimate start time based on duration (approximate)
       const estimatedStartTime = Date.now() - duration;
       metrics.httpRequestLog.push({
-        url: redactEndpoint(context.endpoint),
+        url: maskApiKey(context.endpoint),
         method: 'POST',
         timestamp: estimatedStartTime,
         queryCount: actualQueryCount,
         duration: duration
       });
-      log.info(`[HTTP Interceptor] Request #${metrics.httpRequestCount}: ${actualQueryCount} query(ies) to ${redactEndpoint(context.endpoint)} (FAILED after ${duration}ms)`);
+      log.info(`[subgraphProvider:executeRequests] HTTP #${metrics.httpRequestCount}: ${actualQueryCount} queries (FAILED ${duration}ms)`);
     }
     
-    log.error(`[RequestCounter] Request #${metrics.requestCount} failed in ${duration}ms:`, error);
-    log.error('Error executing GraphQL requests:', error);
-    // We should not throw an error here, because in the next block emitted we can get all the data from the previous blocks
+    log.error(`[subgraphProvider:executeRequests] Request #${metrics.requestCount} failed in ${duration}ms:`, error);
+    trimMetricsHistory();
     return {};
   }
 };

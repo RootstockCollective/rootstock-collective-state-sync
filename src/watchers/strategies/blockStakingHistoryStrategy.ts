@@ -49,8 +49,8 @@ function shouldRun(blockNumber: bigint | null): boolean {
 
   if (lastProcessedBlock > 0n && blockNumber < lastProcessedBlock + threshold) {
     log.debug(
-      `[StakingHistory] Skipping block ${blockNumber}, ` +
-      `next run at block ${lastProcessedBlock + threshold}`
+      `[blockStakingHistoryStrategy:shouldRun] Skipping block ${blockNumber}, ` +
+      `next at ${lastProcessedBlock + threshold}`
     );
     return false;
   }
@@ -72,7 +72,7 @@ async function getFromBlock(context: AppContext): Promise<bigint> {
 function getSubgraphContext(appContext: AppContext): GraphQlContext | null {
   const entity = appContext.schema.entities.get('StakingHistory');
   if (!entity) {
-    log.error('[StakingHistory] StakingHistory entity not found in schema');
+    log.error('[blockStakingHistoryStrategy:getSubgraphContext] StakingHistory entity not found');
     return null;
   }
 
@@ -107,7 +107,7 @@ async function getQueries(params: ChangeStrategyParams): Promise<GraphQLRequest[
   }
 
   const fromBlock = await getFromBlock(context);
-  log.debug(`[StakingHistory] Building queries from block ${fromBlock}`);
+  log.debug(`[blockStakingHistoryStrategy:getQueries] From block ${fromBlock}`);
 
   return createEntityQueries(context.schema, validEntities, {
     first: graphqlContext.pagination.maxRowsPerRequest,
@@ -141,7 +141,7 @@ async function processBatchResults(
   // Step 1: Upsert initial batch results
   const batchData = extractEntityData(results, validEntities);
   if (Object.keys(batchData).length > 0) {
-    log.info(`[StakingHistory] Processing ${countRecords(batchData)} records`);
+    log.info(`[blockStakingHistoryStrategy:processBatchResults] ${countRecords(batchData)} records`);
     await processEntityData(context, batchData);
   }
 
@@ -218,7 +218,7 @@ function buildPaginationQueries(
     const lastId = data[data.length - 1]?.id;
 
     if (needsPagination && lastId) {
-      log.debug(`[StakingHistory] Paginating ${entityName} from id ${lastId}`);
+      log.debug(`[blockStakingHistoryStrategy:handlePagination] ${entityName} from id ${lastId}`);
       const nextQueries = createEntityQueries(context.schema, [entityName], {
         first: maxRows,
         filters: {
@@ -249,7 +249,7 @@ async function detectAndProcess(params: ChangeStrategyParams): Promise<boolean> 
   }
 
   const fromBlock = await getFromBlock(context);
-  log.info(`[StakingHistory] Syncing from block ${fromBlock}`);
+  log.info(`[blockStakingHistoryStrategy:detectAndProcess] Syncing from block ${fromBlock}`);
 
   await syncEntities(context, validEntities, fromBlock);
 

@@ -35,8 +35,8 @@ function shouldRun(blockNumber: bigint | null): boolean {
 
   if (lastProcessedBlock > 0n && blockNumber < lastProcessedBlock + threshold) {
     log.debug(
-      `[NewProposal] Skipping block ${blockNumber}, ` +
-      `next run at block ${lastProcessedBlock + threshold}`
+      `[blockProposalStrategy:shouldRun] Skipping block ${blockNumber}, ` +
+      `next at ${lastProcessedBlock + threshold}`
     );
     return false;
   }
@@ -58,7 +58,7 @@ function getFromBlock(blockNumber: bigint): bigint {
 function getSubgraphContext(appContext: AppContext): GraphQlContext | null {
   const proposalEntity = appContext.schema.entities.get('Proposal');
   if (!proposalEntity) {
-    log.error('[NewProposal] Proposal entity not found in schema');
+    log.error('[blockProposalStrategy:getSubgraphContext] Proposal entity not found');
     return null;
   }
 
@@ -115,12 +115,12 @@ async function processBatchResults(
   const voteCasts = results['VoteCast'] || [];
 
   if (proposals.length === 0) {
-    log.debug('[NewProposal] No proposals found');
+    log.debug('[blockProposalStrategy:processBatchResults] No proposals found');
     return false;
   }
 
   const totalRecords = proposals.length + accounts.length + voteCasts.length;
-  log.info(`[NewProposal] Processing ${totalRecords} records (${proposals.length} proposals)`);
+  log.info(`[blockProposalStrategy:processBatchResults] ${totalRecords} records (${proposals.length} proposals)`);
 
   await processEntityData(context, {
     Proposal: proposals,
