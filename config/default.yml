@@ -458,3 +458,21 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
+  - name: SubgraphMetadata
+    columns:
+      - name: id
+        type: String
+      - name: blockNumber
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+      - name: blockTimestamp
+        type: BigInt
+      - name: deployment
+        type: String
+      - name: hasIndexingErrors
+        type: Boolean
+    primaryKey:
+      - id
+    subgraphProvider: "governance"
+    syncable: false
