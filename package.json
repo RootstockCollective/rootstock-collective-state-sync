@@ -30,7 +30,7 @@
     "typescript-eslint": "^8.48.1"
   },
   "dependencies": {
-    "config": "^4.1.1",
+    "config": "^4.2.0",
     "js-yaml": "^4.1.1",
     "knex": "^3.1.0",
     "loglevel": "^1.9.2",
