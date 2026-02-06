@@ -5,6 +5,62 @@ import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
 import { EntityDataCollection, EntityRecord, WithMetadata } from '../handlers/types';
 import { pluralizeEntityName } from '../utils/pluralizeEntityName';
 
+// Type definitions for metrics
+interface RequestHistoryEntry {
+  timestamp: number;
+  provider: string;
+  queryCount: number;
+  success: boolean;
+  duration?: number;
+  error?: string;
+}
+
+interface HttpRequestLogEntry {
+  url: string;
+  method: string;
+  timestamp: number;
+  queryCount: number;
+  duration?: number;
+}
+
+/** Maximum entries to keep in metrics history to prevent memory leaks */
+const MAX_METRICS_HISTORY = 1000;
+
+/**
+ * Metrics for monitoring GraphQL request patterns.
+ * 
+ * Terminology:
+ * - requestCount: Number of times executeRequests() was called (may contain multiple queries)
+ * - httpRequestCount: Number of actual HTTP requests made (after batching)
+ * - queryCount: Number of individual GraphQL queries in a single request
+ * 
+ * Example: 5 queries batched into 1 HTTP request
+ *   requestCount: 1 (one call to executeRequests)
+ *   httpRequestCount: 1 (one HTTP request made)
+ *   queryCount: 5 (five queries in that request)
+ */
+const metrics: {
+  requestCount: number;
+  requestHistory: RequestHistoryEntry[];
+  httpRequestCount: number;
+  httpRequestLog: HttpRequestLogEntry[];
+} = {
+  requestCount: 0,
+  requestHistory: [],
+  httpRequestCount: 0,
+  httpRequestLog: []
+};
+
+/** Trims metrics arrays to prevent unbounded growth */
+function trimMetricsHistory(): void {
+  if (metrics.requestHistory.length > MAX_METRICS_HISTORY) {
+    metrics.requestHistory = metrics.requestHistory.slice(-MAX_METRICS_HISTORY);
+  }
+  if (metrics.httpRequestLog.length > MAX_METRICS_HISTORY) {
+    metrics.httpRequestLog = metrics.httpRequestLog.slice(-MAX_METRICS_HISTORY);
+  }
+}
+
 interface GraphQLMetadata {
     block: {
         number: bigint;
@@ -36,6 +92,25 @@ interface GraphQlContext {
     }
 }
 
+/**
+ * Masks the API key in a URL for safe logging.
+ * Example: https://api.thegraph.com/abc123/subgraph -> https://api.thegraph.com/*** /subgraph
+ */
+function maskApiKey(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    const segments = url.pathname.split('/').filter(Boolean);
+    // Pattern: /apiKey/subgraphId - redact first segment if it looks like an API key
+    if (segments.length >= 2 && segments[0].length > 20) {
+      segments[0] = '***';
+      url.pathname = '/' + segments.join('/');
+    }
+    return url.toString();
+  } catch {
+    return '[invalid-endpoint]';
+  }
+}
+
 // Function to execute a batch of requests
 const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
   context: GraphQlContext,
@@ -43,6 +118,34 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
 ): Promise<Pick<Requests[number], 'withMetadata'> extends WithMetadata
     ? EntityDataCollection<WithMetadata>
     : EntityDataCollection<false>> => {
+  const startTime = Date.now();
+  const queryCount = requests.length;
+  
+  // Increment counter
+  metrics.requestCount++;
+  
+  // Log request
+  const requestEntry: {
+    timestamp: number;
+    provider: string;
+    queryCount: number;
+    success: boolean;
+    duration?: number;
+    error?: string;
+  } = {
+    timestamp: startTime,
+    provider: maskApiKey(context.endpoint),
+    queryCount,
+    success: false
+  };
+  metrics.requestHistory.push(requestEntry);
+
+  log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount}: ${queryCount} queries to ${maskApiKey(context.endpoint)}`);
+
+  // Count queries in batch for HTTP metrics
+  // Use requests.length directly - more reliable than regex parsing
+  // The regex could match false positives in query bodies
+  const actualQueryCount = requests.length;
 
   try {
     const batchQuery = buildBatchQuery(
@@ -50,7 +153,18 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     );
     log.debug('🚀 ~ batchQuery:', batchQuery);
 
-
+    const httpStartTime = Date.now();
+    
+    // Track HTTP request attempt (even if it fails)
+    // This ensures we count all HTTP requests, not just successful ones
+    metrics.httpRequestCount++;
+    const httpRequestLogEntry: HttpRequestLogEntry = {
+      url: maskApiKey(context.endpoint),
+      method: 'POST',
+      timestamp: httpStartTime,
+      queryCount: actualQueryCount
+    };
+    
     const response = await fetch(context.endpoint, {
       method: 'POST',
       headers: {
@@ -60,6 +174,13 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
         query: batchQuery
       }),
     });
+    const httpDuration = Date.now() - httpStartTime;
+
+    // Update log entry with duration (successful request)
+    httpRequestLogEntry.duration = httpDuration;
+    metrics.httpRequestLog.push(httpRequestLogEntry);
+
+    log.info(`[subgraphProvider:executeRequests] HTTP #${metrics.httpRequestCount}: ${actualQueryCount} queries (${httpDuration}ms)`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -74,6 +195,16 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
       log.error('GraphQL query that caused error:', batchQuery);
       throw new Error(`GraphQL errors: ${JSON.stringify(apiResponseData.errors)}`);
     }
+
+    // Handle case when data is null/undefined (e.g., subgraph not deployed or empty)
+    if (!apiResponseData.data) {
+      log.warn('GraphQL response has no data field - subgraph may not be deployed or synced');
+      const duration = Date.now() - startTime;
+      requestEntry.success = true;
+      requestEntry.duration = duration;
+      return {};
+    }
+
     const [entities, metadata] = Object.keys(apiResponseData.data)
       .reduce((acc, key) => {
         if (key === '_meta') {
@@ -99,22 +230,80 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
       results[request.entityName] = data;
     }
 
+    const duration = Date.now() - startTime;
+    requestEntry.success = true;
+    requestEntry.duration = duration;
+    log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount} completed in ${duration}ms`);
+    trimMetricsHistory();
+
     return metadata ? { ...results, _meta: metadata } as EntityDataCollection<WithMetadata> : results;
   } catch (error) {
-    log.error('Error executing GraphQL requests:', error);
-    // We should not throw an error here, because in the next block emitted we can get all the data from the previous blocks
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    requestEntry.success = false;
+    requestEntry.duration = duration;
+    requestEntry.error = errorMessage;
+    
+    // If HTTP request was attempted but failed, ensure it's logged
+    // httpRequestCount was already incremented before fetch, but log entry might be missing
+    // if fetch threw before we could push the entry
+    if (metrics.httpRequestLog.length < metrics.httpRequestCount) {
+      // Estimate start time based on duration (approximate)
+      const estimatedStartTime = Date.now() - duration;
+      metrics.httpRequestLog.push({
+        url: maskApiKey(context.endpoint),
+        method: 'POST',
+        timestamp: estimatedStartTime,
+        queryCount: actualQueryCount,
+        duration: duration
+      });
+      log.info(`[subgraphProvider:executeRequests] HTTP #${metrics.httpRequestCount}: ${actualQueryCount} queries (FAILED ${duration}ms)`);
+    }
+    
+    log.error(`[subgraphProvider:executeRequests] Request #${metrics.requestCount} failed in ${duration}ms:`, error);
+    trimMetricsHistory();
     return {};
   }
 };
 
 // Factory function to create a TheGraph context
-const createTheGraphContext = ({ url, id, maxRowsPerRequest, apiKey }: SubgraphProvider): GraphQlContext => ({
-  endpoint: `${url}/${apiKey}/${id}`,
-  pagination: {
-    maxRowsPerRequest
-  }
-});
+const createTheGraphContext = ({ url, id, maxRowsPerRequest, apiKey }: SubgraphProvider): GraphQlContext => {
+  // Build endpoint URL, handling empty apiKey to avoid double slashes
+  const endpoint = apiKey 
+    ? `${url}/${apiKey}/${id}`
+    : `${url}/subgraphs/name/${id}`;
+  
+  return {
+    endpoint,
+    pagination: {
+      maxRowsPerRequest
+    }
+  };
+};
 
-export { createTheGraphContext, executeRequests };
+// Export metrics functions
+function getRequestMetrics() {
+  return {
+    totalRequests: metrics.requestCount,
+    history: [...metrics.requestHistory],
+    reset: () => {
+      metrics.requestCount = 0;
+      metrics.requestHistory = [];
+    }
+  };
+}
+
+function getHttpMetrics() {
+  return {
+    totalHttpRequests: metrics.httpRequestCount,
+    log: [...metrics.httpRequestLog],
+    reset: () => {
+      metrics.httpRequestCount = 0;
+      metrics.httpRequestLog = [];
+    }
+  };
+}
+
+export { createTheGraphContext, executeRequests, getRequestMetrics, getHttpMetrics };
 export type { GraphQlContext, GraphQLMetadata, GraphQLRequest, GraphQLResponse };
 

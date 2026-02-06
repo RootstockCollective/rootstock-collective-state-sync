@@ -1,101 +1,171 @@
-import { ChangeStrategy, Proposal } from './types';
-import { AppContext } from '../../context/types';
-import { PublicClient } from 'viem';
+/**
+ * New Proposal Strategy - Syncs new proposals from the governance subgraph.
+ *
+ * This strategy fetches proposals created within the voting period window
+ * and syncs them along with related entities (Account, VoteCast).
+ *
+ * Implements BatchableStrategy for query batching optimization.
+ */
 import log from 'loglevel';
+
+import { BatchableStrategy, ChangeStrategyParams, Proposal } from './types';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
-import { executeRequests } from '../../context/subgraphProvider';
-import { syncEntities } from '../../handlers/subgraphSyncer';
+import { executeRequests, GraphQLRequest, GraphQlContext } from '../../context/subgraphProvider';
+import { processEntityData } from '../../handlers/subgraphSyncer';
 import { getConfig } from '../../config/config';
+import { EntityDataCollection } from '../../handlers/types';
+import { AppContext } from '../../context/types';
 
-const MAINNET_VOTING_PERIOD_BLOCKS = 25000n;
+/** Approximate number of blocks in a voting period on mainnet */
+const VOTING_PERIOD_BLOCKS = 25000n;
 
-let LAST_PROCESSED_BLOCK = 0n;
+/** Tracks the last block where this strategy ran to implement throttling */
+let lastProcessedBlock = 0n;
 
-const createStrategy = (): ChangeStrategy => {
+/**
+ * Determines if the strategy should run for the given block.
+ * Implements throttling based on blockIntervalThreshold config.
+ */
+function shouldRun(blockNumber: bigint | null): boolean {
+  if (!blockNumber) {
+    return false;
+  }
 
-  const detectAndProcess = async (params: {
-    context: AppContext;
-    client: PublicClient;
-    blockNumber: bigint | null;
-  }): Promise<boolean> => {
-    const { context } = params;
-    if (!params.blockNumber) {
-      log.error('blockProposalStrategy->detectAndProcess: No block number provided, skipping processing');
-      return false;
-    }
+  const threshold = BigInt(getConfig().blockchain.blockIntervalThreshold);
 
-    const BLOCK_INTERVAL_THRESHOLD = BigInt(getConfig().blockchain.blockIntervalThreshold);
+  if (lastProcessedBlock > 0n && blockNumber < lastProcessedBlock + threshold) {
+    log.debug(
+      `[blockProposalStrategy:shouldRun] Skipping block ${blockNumber}, ` +
+      `next at ${lastProcessedBlock + threshold}`
+    );
+    return false;
+  }
 
-    // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
-    if (LAST_PROCESSED_BLOCK > 0n && params.blockNumber < (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD)) {
-      const blocksUntilNext = (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD) - params.blockNumber;
-      log.info(`blockProposalStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`);
-      return false;
-    }
+  return true;
+}
 
-    const fromBlock = params.blockNumber - MAINNET_VOTING_PERIOD_BLOCKS;
-    log.info(`blockProposalStrategy->detectAndProcess: Processing proposals since block ${fromBlock.toString()}`);
+/**
+ * Calculates the starting block for proposal queries.
+ * Looks back one voting period to catch all active proposals.
+ */
+function getFromBlock(blockNumber: bigint): bigint {
+  return blockNumber - VOTING_PERIOD_BLOCKS;
+}
 
-    // Find the subgraph context for Proposal entity
-    const proposalEntity = context.schema.entities.get('Proposal');
-    if (!proposalEntity) {
-      log.error('Proposal entity not found in schema');
-      return false;
-    }
+/**
+ * Gets the GraphQL context for the Proposal entity's subgraph.
+ */
+function getSubgraphContext(appContext: AppContext): GraphQlContext | null {
+  const proposalEntity = appContext.schema.entities.get('Proposal');
+  if (!proposalEntity) {
+    log.error('[blockProposalStrategy:getSubgraphContext] Proposal entity not found');
+    return null;
+  }
 
-    const subgraphName = proposalEntity.subgraphProvider;
-    const graphqlContext = context.graphqlContexts[subgraphName];
-    if (!graphqlContext) {
-      log.error(`Subgraph context for ${subgraphName} not found`);
-      return false;
-    }
+  const subgraphName = proposalEntity.subgraphProvider;
+  return appContext.graphqlContexts[subgraphName] || null;
+}
 
-    // Query all block change logs since the last processed block
-    const query = createEntityQuery(context.schema, 'Proposal', {
-      first: graphqlContext.pagination.maxRowsPerRequest,
-      order: {
-        by: 'createdAtBlock',
-        direction: 'desc'
-      },
-      filters: {
-        createdAtBlock_gt: fromBlock
-      }
-    });
+/**
+ * Builds GraphQL queries for Proposal, Account, and VoteCast.
+ * All queries are batched into a single HTTP request.
+ */
+async function getQueries(params: ChangeStrategyParams): Promise<GraphQLRequest[]> {
+  const { context, blockNumber } = params;
 
-    const results = await executeRequests(graphqlContext, [query]);
-    const proposals = results['Proposal'] as Proposal[] || [];
+  if (!shouldRun(blockNumber) || !blockNumber) {
+    return [];
+  }
 
-    if (proposals.length === 0) {
-      log.info(`${strategy.name}: No entities to sync`);
-      return false;
-    }
+  const graphqlContext = getSubgraphContext(context);
+  if (!graphqlContext) {
+    return [];
+  }
 
-    // Process the changes specific to this strategy
-    log.info(`blockProposalStrategy->detectAndProcess: Processing ${proposals.length} entities: ${proposals.map(p => p.proposalId).join(', ')}`);
+  const fromBlock = getFromBlock(blockNumber);
+  const maxRows = graphqlContext.pagination.maxRowsPerRequest;
 
-    // Add Proposal itself to the entities to sync
-    const allEntitiesToSync = ['Account','Proposal','VoteCast'];
-    const validEntities = allEntitiesToSync.filter(entityName => context.schema.entities.has(entityName));
+  return [
+    createEntityQuery(context.schema, 'Proposal', {
+      first: maxRows,
+      order: { by: 'createdAtBlock', direction: 'desc' },
+      filters: { createdAtBlock_gt: fromBlock }
+    }),
+    createEntityQuery(context.schema, 'Account', { first: maxRows }),
+    createEntityQuery(context.schema, 'VoteCast', { first: maxRows })
+  ];
+}
 
-    if (validEntities.length > 0) {
-      await syncEntities(context, validEntities, fromBlock);
+/**
+ * Processes batch results - upserts all entities from the batch.
+ * No additional queries needed since Account and VoteCast are in the batch.
+ */
+async function processBatchResults(
+  results: EntityDataCollection,
+  params: ChangeStrategyParams
+): Promise<boolean> {
+  const { context, blockNumber } = params;
 
-      // Update in-memory last processed block
-      LAST_PROCESSED_BLOCK = params.blockNumber;
+  if (!blockNumber) {
+    return false;
+  }
 
-      log.info(`blockProposalStrategy->detectAndProcess: Stored last processed block: ${params.blockNumber}`);
+  const proposals = (results['Proposal'] as Proposal[]) || [];
+  const accounts = results['Account'] || [];
+  const voteCasts = results['VoteCast'] || [];
 
-      return true;
-    }
+  if (proposals.length === 0) {
+    log.debug('[blockProposalStrategy:processBatchResults] No proposals found');
+    return false;
+  }
 
-    return true;
-  };
+  const totalRecords = proposals.length + accounts.length + voteCasts.length;
+  log.info(`[blockProposalStrategy:processBatchResults] ${totalRecords} records (${proposals.length} proposals)`);
 
-  const strategy = {
+  await processEntityData(context, {
+    Proposal: proposals,
+    Account: accounts,
+    VoteCast: voteCasts
+  });
+
+  lastProcessedBlock = blockNumber;
+  return true;
+}
+
+/**
+ * Standalone execution - used when not batching or as fallback.
+ */
+async function detectAndProcess(params: ChangeStrategyParams): Promise<boolean> {
+  const { context, blockNumber } = params;
+
+  if (!shouldRun(blockNumber) || !blockNumber) {
+    return false;
+  }
+
+  const graphqlContext = getSubgraphContext(context);
+  if (!graphqlContext) {
+    return false;
+  }
+
+  const queries = await getQueries(params);
+  if (queries.length === 0) {
+    return false;
+  }
+
+  const results = await executeRequests(graphqlContext, queries);
+  return processBatchResults(results, params);
+}
+
+/**
+ * Creates a new instance of the NewProposal strategy.
+ */
+export function createNewProposalStrategy(): BatchableStrategy {
+  return {
     name: 'NewProposal',
+    canBatch: true,
+    getSubgraphContext,
+    getQueries,
+    processBatchResults,
     detectAndProcess
   };
-  return strategy;
-};
-
-export const createNewProposalStrategy = () => createStrategy();
+}
