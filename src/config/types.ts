@@ -54,6 +54,7 @@ interface Entity {
     columns: Column[];
     primaryKey: string[];
     subgraphProvider: string;
+    syncable?: boolean;
 }
 
 export type { Config, App, Database, Blockchain, SubgraphProvider, Contract, Column, Entity };
