@@ -1,0 +1,13 @@
+namespace: state-sync-rc-mainnet
+
+env:
+  NODE_ENV: "release-candidate-mainnet"
+
+image:
+  tag: 2b03ef3ebc5a44c9eeb9e8c4d3658cf1d4375085
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync/rc-mainnet/database-uri
+    theGraphApiKeyCR: /rscoll-dev/rc-mainnet/the-graph-api-key
+    theGraphApiKeyGov: /rscoll-dev/rc-mainnet/dao-graph-api-key
