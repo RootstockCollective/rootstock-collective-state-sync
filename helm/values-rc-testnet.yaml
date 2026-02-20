@@ -1,0 +1,13 @@
+namespace: state-sync-rc-testnet
+
+env:
+  NODE_ENV: "release-candidate-testnet"
+
+image:
+  tag: 2b03ef3ebc5a44c9eeb9e8c4d3658cf1d4375085
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync/rc-testnet/database-uri
+    theGraphApiKeyCR: /rscoll-dev/rc-testnet/the-graph-api-key
+    theGraphApiKeyGov: /rscoll-dev/rc-testnet/dao-graph-api-key

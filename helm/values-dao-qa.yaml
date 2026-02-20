@@ -1,0 +1,10 @@
+namespace: state-sync-dao-qa
+
+env:
+  NODE_ENV: "dao.qa"
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync/dao-qa/database-uri
+    theGraphApiKeyCR: /rscoll-dev/dao-qa/the-graph-api-key
+    theGraphApiKeyGov: /rscoll-dev/dao-qa/dao-graph-api-key

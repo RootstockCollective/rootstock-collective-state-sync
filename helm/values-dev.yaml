@@ -1,0 +1,13 @@
+namespace: state-sync-dev
+
+env:
+  NODE_ENV: "dev"
+
+image:
+  tag: cf8fecb9bd75757b0510608e4ed1c76844150700
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync/dev/database-uri
+    theGraphApiKeyCR: /rscoll-dev/dev/the-graph-api-key
+    theGraphApiKeyGov: /rscoll-dev/dev/dao-graph-api-key
