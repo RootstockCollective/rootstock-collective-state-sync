@@ -196,10 +196,10 @@ function buildRequestsWithOptionalMetadataForSingle(
   const metadataRequest =
     resolvedSubgraphName !== undefined
       ? getMetadataRequest(
-          params.context,
-          resolvedSubgraphName,
-          new Set([entry.request.entityName])
-        )
+        params.context,
+        resolvedSubgraphName,
+        new Set([entry.request.entityName])
+      )
       : null;
 
   const requests: GraphQLRequest[] = [entry.request];
@@ -265,10 +265,10 @@ function buildRequestsWithOptionalMetadata(
   const metadataRequest =
     resolvedSubgraphName !== undefined
       ? getMetadataRequest(
-          params.context,
-          resolvedSubgraphName,
-          existingEntityNames
-        )
+        params.context,
+        resolvedSubgraphName,
+        existingEntityNames
+      )
       : null;
 
   const requests = group.queries.map(q => q.request);

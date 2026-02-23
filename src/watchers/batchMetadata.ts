@@ -54,6 +54,9 @@ export function getMetadataRequest(
     if (entity.subgraphProvider !== subgraphName) {
       continue;
     }
+    if (entity.syncable === false) {
+      continue;
+    }
     if (fallbackEntityName === null) {
       fallbackEntityName = entityName;
     }
