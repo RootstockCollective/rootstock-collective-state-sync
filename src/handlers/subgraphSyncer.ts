@@ -1,9 +1,9 @@
 import log from 'loglevel';
 
 import { executeRequests } from '../context/subgraphProvider';
-import { GraphQLMetadata } from '../context/subgraphProvider';
 import { AppContext } from '../context/types';
 import { executeUpsert } from './dbUpsert';
+import { saveSubgraphMetadata } from './subgraphMetadata';
 import { createEntityQueries } from './subgraphQueryBuilder';
 import { EntityDataCollection, WithMetadata } from './types';
 
@@ -41,42 +41,6 @@ const buildFilters = (lastProcessedId: string | undefined, blockNumber?: bigint)
   ...(lastProcessedId ? { id_gt: lastProcessedId } : { id_gt: '0x00' }),
   ...(blockNumber ? { _change_block: { number_gte: blockNumber } } : {}),
 });
-
-interface SubgraphMetadataRecord {
-  id: string;
-  blockNumber: bigint | string;
-  blockHash: string;
-  blockTimestamp: bigint | string;
-  deployment: string;
-  hasIndexingErrors: boolean;
-}
-
-const saveSubgraphMetadata = async (
-  context: AppContext,
-  subgraphName: string,
-  metadata: GraphQLMetadata
-): Promise<void> => {
-  if (!context.schema.entities.has('SubgraphMetadata')) {
-    return;
-  }
-  
-  try {
-    await context.dbContext.db<SubgraphMetadataRecord>('SubgraphMetadata')
-      .insert({
-        id: subgraphName,
-        blockNumber: metadata.block.number,
-        blockHash: metadata.block.hash,
-        blockTimestamp: metadata.block.timestamp,
-        deployment: metadata.deployment,
-        hasIndexingErrors: metadata.hasIndexingErrors,
-      })
-      .onConflict('id')
-      .merge();
-    log.debug(`Saved SubgraphMetadata for ${subgraphName}`);
-  } catch (error) {
-    log.error(`Failed to save SubgraphMetadata for ${subgraphName}`, error);
-  }
-};
 
 const collectEntityData = async (
   context: AppContext,
