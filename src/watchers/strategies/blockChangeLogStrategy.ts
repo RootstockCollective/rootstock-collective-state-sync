@@ -65,10 +65,10 @@ const detectAndProcess = async (params: {
     .onConflict('id')
     .merge()
     .on('query', function (data: unknown) {
-      log.debug(`${STRATEGY_NAME}: Updated last processed block to ${lastProcessedBlock.block.hash} at number ${lastProcessedBlock.block.number}`, data);
+      log.info(`[blockChangeLogStrategy:detectAndProcess] Updated last processed block to ${lastProcessedBlock.block.hash} at number ${lastProcessedBlock.block.number}`, data);
     })
     .then((v) => {
-      log.debug(`${STRATEGY_NAME}: Successfully updated last processed block`, v);
+      log.info('[blockChangeLogStrategy:detectAndProcess] Successfully updated last processed block', v);
     })
     .catch(err => {
       log.error(`${STRATEGY_NAME}: Failed to update last processed block`, err);
@@ -79,13 +79,13 @@ const detectAndProcess = async (params: {
   const [lastBlockChangeLog] = blockChangeLogResults as BlockChangeLog[];
 
   if (!lastBlockChangeLog) {
-    log.info(`${STRATEGY_NAME}: No block change log found`);
+    log.info('[blockChangeLogStrategy:detectAndProcess] No block change log found');
 
     return false;
   }
 
   if (lastBlockChangeLog.id === lastStoredBlockHash.toString()) {
-    log.info(`${STRATEGY_NAME}: No new changes since last processed event`);
+    log.info('[blockChangeLogStrategy:detectAndProcess] No new changes since last processed event');
 
     return false;
   }
@@ -94,13 +94,13 @@ const detectAndProcess = async (params: {
   const entitiesToSync = Array.from(new Set<string>(lastBlockChangeLog.updatedEntities || []));
 
   if (entitiesToSync.length === 0) {
-    log.info(`${STRATEGY_NAME}: No entities to sync`);
+    log.info('[blockChangeLogStrategy:detectAndProcess] No entities to sync');
 
     return false;
   }
 
   // Process the changes specific to this strategy
-  log.info(`${STRATEGY_NAME}: Processing ${entitiesToSync.length} entities: ${entitiesToSync.join(', ')}`);
+  log.info(`[blockChangeLogStrategy:detectAndProcess] Processing ${entitiesToSync.length} entities: ${entitiesToSync.join(', ')}`);
 
   // Add BlockChangeLog itself to the entities to sync
   const allEntitiesToSync = [...entitiesToSync, schemaName];

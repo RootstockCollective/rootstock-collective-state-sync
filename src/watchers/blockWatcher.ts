@@ -165,7 +165,7 @@ async function watchBlocks(context: AppContext): Promise<() => void> {
 
   return client.watchBlocks({
     onBlock: async (block: Block) => {
-      log.debug(`[blockWatcher:watchBlocks] Processing block ${block.number}`);
+      log.info(`[blockWatcher:watchBlocks] Processing block ${block.number}`);
       await handleBlock(block.number);
     },
     emitMissed: true,
