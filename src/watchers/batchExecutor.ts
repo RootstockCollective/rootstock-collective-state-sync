@@ -13,7 +13,7 @@
  */
 import log from 'loglevel';
 
-import { getMetadataRequest, getSubgraphName } from './batchMetadata';
+import { getSubgraphName } from './batchMetadata';
 import { BatchableStrategy, ChangeStrategyParams } from './strategies/types';
 import {
   executeRequests,
@@ -180,9 +180,8 @@ async function processBatchGroup(
 }
 
 /**
- * Builds the request list for a single-query execution, optionally appending one metadata request.
- * To remove metadata from single-query path later, replace the call with:
- * { requests: [entry.request], subgraphName: undefined }.
+ * Builds the request list for a single-query execution. When the schema defines SubgraphMetadata,
+ * sets withMetadata: true on the single request so the response includes _meta.
  * @param subgraphName - When provided (e.g. from processBatchGroup or executeFallback), avoids re-resolving.
  */
 function buildRequestsWithOptionalMetadataForSingle(
@@ -193,18 +192,14 @@ function buildRequestsWithOptionalMetadataForSingle(
 ): { requests: GraphQLRequest[]; subgraphName: string | undefined } {
   const resolvedSubgraphName =
     subgraphName ?? getSubgraphName(params.context, graphqlContext);
-  const metadataRequest =
-    resolvedSubgraphName !== undefined
-      ? getMetadataRequest(
-        params.context,
-        resolvedSubgraphName,
-        new Set([entry.request.entityName])
-      )
-      : null;
-
   const requests: GraphQLRequest[] = [entry.request];
-  if (metadataRequest !== null) {
-    requests.push(metadataRequest);
+
+  if (
+    resolvedSubgraphName !== undefined &&
+    params.context.schema.entities.has('SubgraphMetadata') &&
+    requests.length > 0
+  ) {
+    requests[0] = { ...requests[0], withMetadata: true };
   }
   return { requests, subgraphName: resolvedSubgraphName };
 }
@@ -249,9 +244,9 @@ async function executeSingleQuery(
 }
 
 /**
- * Builds the request list for a batch group, optionally appending one metadata request
- * when the schema defines SubgraphMetadata. To remove metadata from batching later,
- * replace the call with: { requests: group.queries.map(q => q.request), subgraphName: undefined }.
+ * Builds the request list for a batch group. When the schema defines SubgraphMetadata,
+ * sets withMetadata: true on the first request so the batch response includes _meta
+ * without adding a duplicate entity request (avoids overwriting strategy results).
  * @param subgraphName - When provided by the caller (processBatchGroup), avoids re-resolving.
  */
 function buildRequestsWithOptionalMetadata(
@@ -261,19 +256,14 @@ function buildRequestsWithOptionalMetadata(
 ): { requests: GraphQLRequest[]; subgraphName: string | undefined } {
   const resolvedSubgraphName =
     subgraphName ?? getSubgraphName(params.context, group.graphqlContext);
-  const existingEntityNames = new Set(group.queries.map(q => q.request.entityName));
-  const metadataRequest =
-    resolvedSubgraphName !== undefined
-      ? getMetadataRequest(
-        params.context,
-        resolvedSubgraphName,
-        existingEntityNames
-      )
-      : null;
-
   const requests = group.queries.map(q => q.request);
-  if (metadataRequest !== null) {
-    requests.push(metadataRequest);
+
+  if (
+    resolvedSubgraphName !== undefined &&
+    params.context.schema.entities.has('SubgraphMetadata') &&
+    requests.length > 0
+  ) {
+    requests[0] = { ...requests[0], withMetadata: true };
   }
   return { requests, subgraphName: resolvedSubgraphName };
 }

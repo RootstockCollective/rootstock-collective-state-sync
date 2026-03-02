@@ -21,7 +21,7 @@ export const saveSubgraphMetadata = async (
   subgraphName: string,
   metadata: GraphQLMetadata
 ): Promise<void> => {
-  console.debug('[saveSubgraphMetadata] reached', { subgraphName });
+  log.debug('[saveSubgraphMetadata] reached', { subgraphName });
   if (!context.schema.entities.has('SubgraphMetadata')) {
     return;
   }
