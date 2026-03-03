@@ -151,7 +151,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     const batchQuery = buildBatchQuery(
       requests.map((req, index) => ({ index, request: req }))
     );
-    log.debug('🚀 ~ batchQuery:', batchQuery);
+    log.debug('[subgraphProvider:executeRequests] batchQuery:', batchQuery);
 
     const httpStartTime = Date.now();
     
@@ -221,7 +221,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
       const entityName = pluralizeEntityName(request.entityName);
       const queryKey = `${entityName}_${i}`;
       const data = entities[queryKey] || [];
-      log.info(`Processing response for ${request.entityName}:`, {
+      log.info(`[subgraphProvider:executeRequests] Processing response for ${request.entityName}:`, {
         queryKey,
         dataLength: data.length,
         firstId: data[0]?.id,

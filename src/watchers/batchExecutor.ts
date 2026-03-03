@@ -50,7 +50,7 @@ export async function executeBatchedStrategies(
     return results;
   }
 
-  log.debug(`[batchExecutor:executeBatchedStrategies] Processing ${strategies.length} strategies`);
+  log.info(`[batchExecutor:executeBatchedStrategies] Processing ${strategies.length} strategies`);
 
   const { groups: batchGroups, failed } = await groupQueriesByEndpoint(strategies, params);
 
