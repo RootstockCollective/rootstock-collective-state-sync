@@ -1,92 +1,272 @@
-import { ChangeStrategy } from './types';
-import { AppContext } from '../../context/types';
-import { PublicClient } from 'viem';
+/**
+ * Staking History Strategy - Syncs staking history and related accounts.
+ *
+ * This strategy fetches StakingHistory and Account entities that have changed
+ * since the last sync, using the _change_block filter for incremental updates.
+ *
+ * Implements BatchableStrategy for query batching optimization.
+ */
 import log from 'loglevel';
-import { syncEntities } from '../../handlers/subgraphSyncer';
-import { getConfig } from '../../config/config';
 
-let LAST_PROCESSED_BLOCK = 0n;
+import { BatchableStrategy, ChangeStrategyParams } from './types';
+import { AppContext } from '../../context/types';
+import { syncEntities, processEntityData } from '../../handlers/subgraphSyncer';
+import { executeRequests, GraphQLRequest, GraphQlContext } from '../../context/subgraphProvider';
+import { getConfig } from '../../config/config';
+import { createEntityQueries } from '../../handlers/subgraphQueryBuilder';
+import { EntityDataCollection } from '../../handlers/types';
+
+/** Entities this strategy syncs */
+const ENTITIES_TO_SYNC = ['Account', 'StakingHistory'] as const;
+
+/** Tracks the last block where this strategy ran to implement throttling */
+let lastProcessedBlock = 0n;
 
 interface StakingHistoryRecord {
   blockNumber: string;
 }
 
-const getLastStakingHistoryBlock = async (
-  db: AppContext['dbContext']['db']
-): Promise<bigint> => {
+/**
+ * Gets the last synced block from the StakingHistory table.
+ */
+async function getLastStoredBlock(db: AppContext['dbContext']['db']): Promise<bigint> {
   const result = await db<StakingHistoryRecord>('StakingHistory')
     .orderBy('blockNumber', 'desc')
     .first();
 
-  if (!result || !result.blockNumber) {
-    return 0n;
+  return result?.blockNumber ? BigInt(result.blockNumber) : 0n;
+}
+
+/**
+ * Determines if the strategy should run for the given block.
+ */
+function shouldRun(blockNumber: bigint | null): boolean {
+  if (!blockNumber) {
+    return false;
   }
 
-  return BigInt(result.blockNumber);
-};
+  const threshold = BigInt(getConfig().blockchain.blockIntervalThreshold);
 
-const createStrategy = (): ChangeStrategy => {
-
-  const detectAndProcess = async (params: {
-    context: AppContext;
-    client: PublicClient;
-    blockNumber: bigint | null;
-  }): Promise<boolean> => {
-    const { context } = params;
-    if (!params.blockNumber) {
-      log.error('blockStakingHistoryStrategy->detectAndProcess: No block number provided, skipping processing');
-      return false;
-    }
-
-    const BLOCK_INTERVAL_THRESHOLD = BigInt(getConfig().blockchain.blockIntervalThreshold);
-
-    // Check if current block is at least BLOCK_INTERVAL blocks after last processed block
-    if (LAST_PROCESSED_BLOCK > 0n && params.blockNumber < (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD)) {
-      const blocksUntilNext = (LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD) - params.blockNumber;
-      log.info(`blockStakingHistoryStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`);
-      return false;
-    }
-
-    // Get the last block number from StakingHistory in the database
-    // This ensures we only query new records since the last one we have
-    const lastStoredBlock = await getLastStakingHistoryBlock(context.dbContext.db);
-    const fromBlock = lastStoredBlock > 0n ? lastStoredBlock + 1n : 0n;
-    log.info(`blockStakingHistoryStrategy->detectAndProcess: Last stored block: ${lastStoredBlock.toString()}, syncing staking history records from block ${fromBlock.toString()}`);
-
-    // Verify StakingHistory entity exists in schema
-    const stakingHistoryEntity = context.schema.entities.get('StakingHistory');
-    if (!stakingHistoryEntity) {
-      log.error('StakingHistory entity not found in schema');
-      return false;
-    }
-
-    // Sync StakingHistory and Account (since StakingHistory has a relationship with Account)
-    // Use fromBlock to only sync new records since the last processed block
-    // Since StakingHistory records are immutable (transfer events), we only need to sync new ones
-    const allEntitiesToSync = ['Account', 'StakingHistory'];
-    const validEntities = allEntitiesToSync.filter(entityName => context.schema.entities.has(entityName));
-
-    if (validEntities.length > 0) {
-      // Sync with fromBlock to only query new records from the subgraph
-      await syncEntities(context, validEntities, fromBlock);
-
-      // Update in-memory last processed block
-      LAST_PROCESSED_BLOCK = params.blockNumber;
-
-      log.info(`blockStakingHistoryStrategy->detectAndProcess: Synced staking history from block ${fromBlock.toString()}, stored last processed block: ${params.blockNumber}`);
-
-      return true;
-    }
-
+  if (lastProcessedBlock > 0n && blockNumber < lastProcessedBlock + threshold) {
+    log.debug(
+      `[blockStakingHistoryStrategy:shouldRun] Skipping block ${blockNumber}, ` +
+      `next at ${lastProcessedBlock + threshold}`
+    );
     return false;
-  };
+  }
 
-  const strategy = {
+  return true;
+}
+
+/**
+ * Gets the starting block for queries (last stored + 1, or 0 if none).
+ */
+async function getFromBlock(context: AppContext): Promise<bigint> {
+  const lastStoredBlock = await getLastStoredBlock(context.dbContext.db);
+  return lastStoredBlock > 0n ? lastStoredBlock + 1n : 0n;
+}
+
+/**
+ * Gets the GraphQL context for the StakingHistory entity's subgraph.
+ */
+function getSubgraphContext(appContext: AppContext): GraphQlContext | null {
+  const entity = appContext.schema.entities.get('StakingHistory');
+  if (!entity) {
+    log.error('[blockStakingHistoryStrategy:getSubgraphContext] StakingHistory entity not found');
+    return null;
+  }
+
+  return appContext.graphqlContexts[entity.subgraphProvider] || null;
+}
+
+/**
+ * Returns the valid entities to sync (those that exist in schema).
+ */
+function getValidEntities(context: AppContext): string[] {
+  return ENTITIES_TO_SYNC.filter(name => context.schema.entities.has(name));
+}
+
+/**
+ * Builds the GraphQL queries for fetching staking data.
+ */
+async function getQueries(params: ChangeStrategyParams): Promise<GraphQLRequest[]> {
+  const { context, blockNumber } = params;
+
+  if (!shouldRun(blockNumber) || !blockNumber) {
+    return [];
+  }
+
+  const graphqlContext = getSubgraphContext(context);
+  if (!graphqlContext) {
+    return [];
+  }
+
+  const validEntities = getValidEntities(context);
+  if (validEntities.length === 0) {
+    return [];
+  }
+
+  const fromBlock = await getFromBlock(context);
+  log.debug(`[blockStakingHistoryStrategy:getQueries] From block ${fromBlock}`);
+
+  return createEntityQueries(context.schema, validEntities, {
+    first: graphqlContext.pagination.maxRowsPerRequest,
+    filters: { _change_block: { number_gte: fromBlock } }
+  });
+}
+
+/**
+ * Processes batch results - upserts data and handles pagination.
+ */
+async function processBatchResults(
+  results: EntityDataCollection,
+  params: ChangeStrategyParams
+): Promise<boolean> {
+  const { context, blockNumber } = params;
+
+  if (!blockNumber) {
+    return false;
+  }
+
+  const graphqlContext = getSubgraphContext(context);
+  if (!graphqlContext) {
+    return false;
+  }
+
+  const validEntities = getValidEntities(context);
+  if (validEntities.length === 0) {
+    return false;
+  }
+
+  // Step 1: Upsert initial batch results
+  const batchData = extractEntityData(results, validEntities);
+  if (Object.keys(batchData).length > 0) {
+    log.info(`[blockStakingHistoryStrategy:processBatchResults] ${countRecords(batchData)} records`);
+    await processEntityData(context, batchData);
+  }
+
+  // Step 2: Handle pagination
+  await handlePagination(context, graphqlContext, results, validEntities);
+
+  lastProcessedBlock = blockNumber;
+  return true;
+}
+
+/**
+ * Extracts entity data from results for the specified entities.
+ */
+function extractEntityData(
+  results: EntityDataCollection,
+  entityNames: string[]
+): EntityDataCollection {
+  const data: EntityDataCollection = {};
+  for (const name of entityNames) {
+    if (results[name]?.length > 0) {
+      data[name] = results[name];
+    }
+  }
+  return data;
+}
+
+/**
+ * Counts total records across all entities.
+ */
+function countRecords(data: EntityDataCollection): number {
+  return Object.values(data).reduce((sum, arr) => sum + arr.length, 0);
+}
+
+/**
+ * Handles pagination for entities that returned max results.
+ */
+async function handlePagination(
+  context: AppContext,
+  graphqlContext: GraphQlContext,
+  initialResults: EntityDataCollection,
+  entityNames: string[]
+): Promise<void> {
+  const fromBlock = await getFromBlock(context);
+  let pendingQueries = buildPaginationQueries(
+    context, graphqlContext, initialResults, entityNames, fromBlock
+  );
+
+  while (pendingQueries.length > 0) {
+    const pageResults = await executeRequests(graphqlContext, pendingQueries);
+    await processEntityData(context, pageResults);
+
+    pendingQueries = buildPaginationQueries(
+      context, graphqlContext, pageResults, entityNames, fromBlock
+    );
+  }
+}
+
+/**
+ * Builds pagination queries for entities that need more data.
+ */
+function buildPaginationQueries(
+  context: AppContext,
+  graphqlContext: GraphQlContext,
+  results: EntityDataCollection,
+  entityNames: string[],
+  fromBlock: bigint
+): GraphQLRequest[] {
+  const queries: GraphQLRequest[] = [];
+  const maxRows = graphqlContext.pagination.maxRowsPerRequest;
+
+  for (const entityName of entityNames) {
+    const data = results[entityName] || [];
+    const needsPagination = data.length >= maxRows;
+    const lastId = data[data.length - 1]?.id;
+
+    if (needsPagination && lastId) {
+      log.debug(`[blockStakingHistoryStrategy:handlePagination] ${entityName} from id ${lastId}`);
+      const nextQueries = createEntityQueries(context.schema, [entityName], {
+        first: maxRows,
+        filters: {
+          id_gt: lastId,
+          _change_block: { number_gte: fromBlock }
+        }
+      });
+      queries.push(...nextQueries);
+    }
+  }
+
+  return queries;
+}
+
+/**
+ * Standalone execution - used when not batching or as fallback.
+ */
+async function detectAndProcess(params: ChangeStrategyParams): Promise<boolean> {
+  const { context, blockNumber } = params;
+
+  if (!shouldRun(blockNumber) || !blockNumber) {
+    return false;
+  }
+
+  const validEntities = getValidEntities(context);
+  if (validEntities.length === 0) {
+    return false;
+  }
+
+  const fromBlock = await getFromBlock(context);
+  log.info(`[blockStakingHistoryStrategy:detectAndProcess] Syncing from block ${fromBlock}`);
+
+  await syncEntities(context, validEntities, fromBlock);
+
+  lastProcessedBlock = blockNumber;
+  return true;
+}
+
+/**
+ * Creates a new instance of the StakingHistory strategy.
+ */
+export function createStakingHistoryStrategy(): BatchableStrategy {
+  return {
     name: 'StakingHistory',
+    canBatch: true,
+    getSubgraphContext,
+    getQueries,
+    processBatchResults,
     detectAndProcess
   };
-  return strategy;
-};
-
-export const createStakingHistoryStrategy = () => createStrategy();
-
+}

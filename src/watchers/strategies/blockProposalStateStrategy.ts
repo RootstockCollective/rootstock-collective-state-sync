@@ -125,12 +125,12 @@ const createStrategy = (): ChangeStrategy => {
           state: stateDescription,
         });
         
-        log.debug(`Updated proposal ${id} state from ${rawState} to ${blockchainState} (${stateDescription})`);
+        log.info(`[blockProposalStateStrategy:detectAndProcess] Updated proposal ${id} state from ${rawState} to ${blockchainState} (${stateDescription})`);
         updatedCount++;
       }
     }
 
-    log.info(`Updated ${updatedCount} proposals in block ${lastBlockNumber}`);
+    log.info(`[blockProposalStateStrategy:detectAndProcess] Updated ${updatedCount} proposals in block ${lastBlockNumber}`);
 
     return updatedCount > 0;
   };
