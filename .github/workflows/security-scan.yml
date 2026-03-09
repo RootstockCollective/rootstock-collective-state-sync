@@ -45,7 +45,7 @@ jobs:
       
       - name: Upload audit results
         if: always()
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: npm-audit-results
           path: npm-audit.json
