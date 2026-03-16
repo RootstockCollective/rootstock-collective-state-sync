@@ -13,8 +13,16 @@
  */
 import log from 'loglevel';
 
+import { getSubgraphName } from './batchMetadata';
 import { BatchableStrategy, ChangeStrategyParams } from './strategies/types';
-import { executeRequests, GraphQlContext, GraphQLRequest } from '../context/subgraphProvider';
+import {
+  executeRequests,
+  GraphQlContext,
+  GraphQLMetadata,
+  GraphQLRequest,
+} from '../context/subgraphProvider';
+import { AppContext } from '../context/types';
+import { saveSubgraphMetadata } from '../handlers/subgraphMetadata';
 import { EntityDataCollection } from '../handlers/types';
 
 /**
@@ -132,6 +140,7 @@ function addToEndpointGroup(
 
 /**
  * Processes a batch group - executes queries and routes results to strategies.
+ * Resolves subgraph name once and passes it to single/batched paths so metadata logic can use it without re-resolving.
  */
 async function processBatchGroup(
   endpoint: string,
@@ -143,31 +152,90 @@ async function processBatchGroup(
     return;
   }
 
+  const subgraphName = getSubgraphName(params.context, group.graphqlContext);
+
   // Single query - no batching benefit, but still use batch infrastructure
   if (group.queries.length === 1) {
-    await executeSingleQuery(group.queries[0], group.graphqlContext, params, results);
+    await executeSingleQuery(
+      group.queries[0],
+      group.graphqlContext,
+      params,
+      results,
+      subgraphName
+    );
     return;
   }
 
   // Multiple queries - batch them
-  const success = await executeBatchedQueries(endpoint, group, params, results);
+  const success = await executeBatchedQueries(
+    endpoint,
+    group,
+    params,
+    results,
+    subgraphName
+  );
   if (!success) {
     await executeFallback(group, params, results);
   }
 }
 
 /**
+ * Builds the request list for a single-query execution. When the schema defines SubgraphMetadata,
+ * sets withMetadata: true on the single request so the response includes _meta.
+ * @param subgraphName - When provided (e.g. from processBatchGroup or executeFallback), avoids re-resolving.
+ */
+function buildRequestsWithOptionalMetadataForSingle(
+  entry: QueryEntry,
+  graphqlContext: GraphQlContext,
+  params: ChangeStrategyParams,
+  subgraphName?: string | undefined
+): { requests: GraphQLRequest[]; subgraphName: string | undefined } {
+  const resolvedSubgraphName =
+    subgraphName ?? getSubgraphName(params.context, graphqlContext);
+  const requests: GraphQLRequest[] = [entry.request];
+
+  if (
+    resolvedSubgraphName !== undefined &&
+    params.context.schema.entities.has('SubgraphMetadata') &&
+    requests.length > 0
+  ) {
+    requests[0] = { ...requests[0], withMetadata: true };
+  }
+  return { requests, subgraphName: resolvedSubgraphName };
+}
+
+/**
  * Executes a single query for a strategy.
+ * When the schema defines SubgraphMetadata, includes one metadata request in the same HTTP call and persists _meta.
+ * @param subgraphName - When provided by the caller (processBatchGroup or executeFallback), avoids duplicate resolution.
  */
 async function executeSingleQuery(
   entry: QueryEntry,
   graphqlContext: GraphQlContext,
   params: ChangeStrategyParams,
-  results: Map<string, boolean>
+  results: Map<string, boolean>,
+  subgraphName?: string | undefined
 ): Promise<void> {
   try {
-    const queryResults = await executeRequests(graphqlContext, [entry.request]);
-    const success = await entry.strategy.processBatchResults(queryResults, params);
+    const { requests, subgraphName: resolvedSubgraphName } =
+      buildRequestsWithOptionalMetadataForSingle(
+        entry,
+        graphqlContext,
+        params,
+        subgraphName
+      );
+    const queryResults = await executeRequests(graphqlContext, requests);
+    await persistMetadataFromBatchResult(
+      params.context,
+      resolvedSubgraphName,
+      queryResults
+    );
+
+    const strategyResults = extractResults(
+      queryResults,
+      new Set([entry.request.entityName])
+    );
+    const success = await entry.strategy.processBatchResults(strategyResults, params);
     results.set(entry.strategy.name, success);
   } catch (error) {
     log.error(`[BatchExecutor] Query failed for ${entry.strategy.name}:`, error);
@@ -176,19 +244,75 @@ async function executeSingleQuery(
 }
 
 /**
+ * Builds the request list for a batch group. When the schema defines SubgraphMetadata,
+ * sets withMetadata: true on the first request so the batch response includes _meta
+ * without adding a duplicate entity request (avoids overwriting strategy results).
+ * @param subgraphName - When provided by the caller (processBatchGroup), avoids re-resolving.
+ */
+function buildRequestsWithOptionalMetadata(
+  group: BatchGroup,
+  params: ChangeStrategyParams,
+  subgraphName?: string | undefined
+): { requests: GraphQLRequest[]; subgraphName: string | undefined } {
+  const resolvedSubgraphName =
+    subgraphName ?? getSubgraphName(params.context, group.graphqlContext);
+  const requests = group.queries.map(q => q.request);
+
+  if (
+    resolvedSubgraphName !== undefined &&
+    params.context.schema.entities.has('SubgraphMetadata') &&
+    requests.length > 0
+  ) {
+    requests[0] = { ...requests[0], withMetadata: true };
+  }
+  return { requests, subgraphName: resolvedSubgraphName };
+}
+
+/**
+ * If the batch result contains _meta for the given subgraph, persists it via saveSubgraphMetadata.
+ * To remove metadata persistence later, delete the call to this function from executeBatchedQueries.
+ */
+async function persistMetadataFromBatchResult(
+  context: AppContext,
+  subgraphName: string | undefined,
+  batchResults: EntityDataCollection
+): Promise<void> {
+  if (
+    subgraphName === undefined ||
+    !('_meta' in batchResults) ||
+    batchResults._meta === undefined
+  ) {
+    return;
+  }
+  await saveSubgraphMetadata(
+    context,
+    subgraphName,
+    batchResults._meta as unknown as GraphQLMetadata
+  );
+}
+
+/**
  * Executes multiple queries as a single batched request.
+ * @param subgraphName - When provided by processBatchGroup, avoids re-resolving for metadata.
  */
 async function executeBatchedQueries(
   endpoint: string,
   group: BatchGroup,
   params: ChangeStrategyParams,
-  results: Map<string, boolean>
+  results: Map<string, boolean>,
+  subgraphName?: string | undefined
 ): Promise<boolean> {
   try {
     log.info(`[BatchExecutor] Batching ${group.queries.length} queries to ${endpoint}`);
 
-    const requests = group.queries.map(q => q.request);
+    const { requests, subgraphName: resolvedSubgraphName } =
+      buildRequestsWithOptionalMetadata(group, params, subgraphName);
     const batchResults = await executeRequests(group.graphqlContext, requests);
+    await persistMetadataFromBatchResult(
+      params.context,
+      resolvedSubgraphName,
+      batchResults
+    );
 
     await routeResultsToStrategies(group.queries, batchResults, params, results);
     return true;
@@ -250,6 +374,7 @@ function extractResults(
 
 /**
  * Fallback: executes queries individually when batching fails.
+ * Resolves subgraph name once and passes it to each executeSingleQuery (metadata is still requested and saved per call).
  */
 async function executeFallback(
   group: BatchGroup,
@@ -258,7 +383,14 @@ async function executeFallback(
 ): Promise<void> {
   log.warn('[BatchExecutor] Falling back to individual query execution');
 
+  const subgraphName = getSubgraphName(params.context, group.graphqlContext);
   for (const entry of group.queries) {
-    await executeSingleQuery(entry, group.graphqlContext, params, results);
+    await executeSingleQuery(
+      entry,
+      group.graphqlContext,
+      params,
+      results,
+      subgraphName
+    );
   }
 }

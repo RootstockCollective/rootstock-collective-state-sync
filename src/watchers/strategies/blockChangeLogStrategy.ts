@@ -3,6 +3,7 @@ import { PublicClient } from 'viem';
 import { executeRequests } from '../../context/subgraphProvider';
 import { AppContext } from '../../context/types';
 import { createEntityQuery } from '../../handlers/subgraphQueryBuilder';
+import { saveSubgraphMetadata } from '../../handlers/subgraphMetadata';
 import { syncEntities } from '../../handlers/subgraphSyncer';
 import { EntityDataCollection, WithMetadata } from '../../handlers/types';
 import { BlockChangeLog, ChangeStrategy, LastProcessedBlock } from './types';
@@ -53,6 +54,10 @@ const detectAndProcess = async (params: {
     log.error(`${STRATEGY_NAME}: No last processed block found in the subgraph response ${JSON.stringify(results, null, 2)}, for query: ${JSON.stringify(changeLogQuery, null, 2)}`);
 
     return false;
+  }
+
+  if (context.schema.entities.has('SubgraphMetadata')) {
+    await saveSubgraphMetadata(context, subgraphName, lastProcessedBlock);
   }
 
   await context.dbContext.db('LastProcessedBlock')

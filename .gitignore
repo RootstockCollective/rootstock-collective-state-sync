@@ -6,3 +6,4 @@ dist
 coverage
 .nyc_output
 .c8
+.idea

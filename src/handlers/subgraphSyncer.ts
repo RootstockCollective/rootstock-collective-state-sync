@@ -3,8 +3,9 @@ import log from 'loglevel';
 import { executeRequests } from '../context/subgraphProvider';
 import { AppContext } from '../context/types';
 import { executeUpsert } from './dbUpsert';
+import { saveSubgraphMetadata } from './subgraphMetadata';
 import { createEntityQueries } from './subgraphQueryBuilder';
-import { EntityDataCollection } from './types';
+import { EntityDataCollection, WithMetadata } from './types';
 
 interface EntitySyncStatus {
     entityName: string;
@@ -56,6 +57,10 @@ const collectEntityData = async (
       log.warn(`Entity ${entityName} not found in schema`);
       continue;
     }
+    
+    if (entity.syncable === false) {
+      continue;
+    }
         
     const subgraphName = entity.subgraphProvider;
     if (!graphqlContexts[subgraphName]) {
@@ -79,17 +84,36 @@ const collectEntityData = async (
   // Process each subgraph separately
   for (const [subgraphName, subgraphEntities] of Object.entries(entitiesBySubgraph)) {
     const graphqlContext = graphqlContexts[subgraphName];
+    
+    const shouldRequestMetadata = context.schema.entities.has('SubgraphMetadata');
+    let isFirstBatch = true;
         
     let requests = createEntityQueries(schema, subgraphEntities, {
       first: graphqlContext.pagination.maxRowsPerRequest,
       filters: buildFilters(undefined, blockNumber)
     });
+    
+    if (shouldRequestMetadata && requests.length > 0) {
+      requests[0] = {
+        ...requests[0],
+        withMetadata: true
+      };
+    }
 
     while (requests.length > 0) {
       const results = await executeRequests(graphqlContext, requests);
+      
+      if (shouldRequestMetadata && isFirstBatch) {
+        const resultsWithMeta = results as EntityDataCollection<WithMetadata>;
+        if (resultsWithMeta._meta) {
+          await saveSubgraphMetadata(context, subgraphName, resultsWithMeta._meta);
+        }
+        isFirstBatch = false;
+      }
 
       requests = [];
       for (const [entityName, data] of Object.entries(results)) {
+        if (entityName === '_meta') continue;
         const currentStatus = entityStatus[entityName];
         if (!currentStatus) {
           throw new Error(`No status found for entity "${entityName}"`);
