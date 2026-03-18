@@ -523,7 +523,7 @@ entities:
   - name: BtcDepositRequest
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: controller
         type: Bytes
       - name: owner
@@ -556,7 +556,7 @@ entities:
   - name: BtcRedeemRequest
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: controller
         type: Bytes
       - name: owner
