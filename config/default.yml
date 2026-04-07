@@ -484,6 +484,42 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
+  - name: BtcVaultRoleHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: role
+        type: Bytes
+      - name: knownRole
+        type: String
+      - name: account
+        type: Bytes
+      - name: sender
+        type: Bytes
+      - name: timestamp
+        type: BigInt
+      - name: action
+        type: String
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultRoleHistoryCounter
+    columns:
+      - name: id
+        type: Bytes
+      - name: total
+        type: BigInt
+      - name: totalGranted
+        type: BigInt
+      - name: totalRevoked
+        type: BigInt
+      - name: lastUpdated
+        type: BigInt
+      - name: lastUpdatedBlock
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
   - name: BtcDepositRequest
     columns:
       - name: id
@@ -545,6 +581,36 @@ entities:
         type: BigInt
       - name: claimTransactionHash
         type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultWhitelistedUser
+    columns:
+      - name: id
+        type: Bytes
+      - name: account
+        type: Bytes
+      - name: status
+        type: String
+      - name: lastUpdated
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultWhitelistedUsersCounter
+    columns:
+      - name: id
+        type: Bytes
+      - name: total
+        type: BigInt
+      - name: totalGranted
+        type: BigInt
+      - name: totalRevoked
+        type: BigInt
+      - name: lastUpdated
+        type: BigInt
+      - name: lastUpdatedBlock
+        type: BigInt
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
