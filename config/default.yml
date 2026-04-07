@@ -435,25 +435,118 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "governance"
-  - name: VaultHistory
+  - name: BtcVaultHistory
     columns:
       - name: id
-        type: Bytes
+        type: String
       - name: user
         type: Bytes
       - name: action
+        type: String
+      - name: status
         type: String
       - name: assets
         type: BigInt
       - name: shares
         type: BigInt
-      - name: balanceAfter
-        type: BigInt
-      - name: blockNumber
+      - name: epochId
         type: BigInt
       - name: timestamp
         type: BigInt
+      - name: blockNumber
+        type: BigInt
       - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultHistoryCounter
+    columns:
+      - name: id
+        type: String
+      - name: total
+        type: BigInt
+      - name: depositRequests
+        type: BigInt
+      - name: depositsClaimable
+        type: BigInt
+      - name: depositsClaimed
+        type: BigInt
+      - name: depositsCancelled
+        type: BigInt
+      - name: redeemRequests
+        type: BigInt
+      - name: redeemsAccepted
+        type: BigInt
+      - name: redeemsClaimable
+        type: BigInt
+      - name: redeemsClaimed
+        type: BigInt
+      - name: redeemsCancelled
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcDepositRequest
+    columns:
+      - name: id
+        type: String
+      - name: controller
+        type: Bytes
+      - name: owner
+        type: Bytes
+      - name: sender
+        type: Bytes
+      - name: epochId
+        type: BigInt
+      - name: assets
+        type: BigInt
+      - name: shares
+        type: BigInt
+      - name: status
+        type: String
+      - name: isNative
+        type: Boolean
+      - name: requestTimestamp
+        type: BigInt
+      - name: requestBlockNumber
+        type: BigInt
+      - name: requestTransactionHash
+        type: Bytes
+      - name: claimTimestamp
+        type: BigInt
+      - name: claimTransactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcRedeemRequest
+    columns:
+      - name: id
+        type: String
+      - name: controller
+        type: Bytes
+      - name: owner
+        type: Bytes
+      - name: sender
+        type: Bytes
+      - name: epochId
+        type: BigInt
+      - name: shares
+        type: BigInt
+      - name: assets
+        type: BigInt
+      - name: status
+        type: String
+      - name: requestTimestamp
+        type: BigInt
+      - name: requestBlockNumber
+        type: BigInt
+      - name: requestTransactionHash
+        type: Bytes
+      - name: claimTimestamp
+        type: BigInt
+      - name: claimTransactionHash
         type: Bytes
     primaryKey:
       - id
