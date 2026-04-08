@@ -218,10 +218,6 @@ entities:
         type: BigInt
       - name: currentCycleDuration
         type: BigInt
-      - name: previousCycleStart
-        type: BigInt
-      - name: previousCycleDuration
-        type: BigInt
       - name: distributionDuration
         type: BigInt
     primaryKey:
