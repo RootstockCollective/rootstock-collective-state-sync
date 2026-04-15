@@ -484,6 +484,38 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
+  - name: BtcVaultNavHistory
+    columns:
+      - name: id
+        type: String
+      - name: epochId
+        type: BigInt
+      - name: reportedOffchainAssets
+        type: BigInt
+      - name: processedAt
+        type: BigInt
+      - name: requestsProcessed
+        type: BigInt
+      - name: blockNumber
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultNavHistoryCounter
+    columns:
+      - name: id
+        type: String
+      - name: total
+        type: BigInt
+      - name: lastUpdated
+        type: BigInt
+      - name: lastUpdatedBlock
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
   - name: BtcVaultRoleHistory
     columns:
       - name: id
