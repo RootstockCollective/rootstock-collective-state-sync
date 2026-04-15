@@ -1,5 +1,6 @@
 # Test configuration - used for running tests
 app:
+  envName: "test"
   initializeDb: false
   logLevel: "error"  # Reduce noise during tests
   productionMode: false

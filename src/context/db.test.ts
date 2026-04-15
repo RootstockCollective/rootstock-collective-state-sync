@@ -29,7 +29,7 @@ describe('Database Context', () => {
 
   describe('createDatabaseContext', () => {
     it('should create context with basic configuration', () => {
-      const context = createDatabaseContext(mockDatabase, 'testschema');
+      const context = createDatabaseContext(mockDatabase, 'testschema', 'test-env');
 
       assert.ok(context.db);
       assert.equal(context.schema, 'testschema');
@@ -39,12 +39,12 @@ describe('Database Context', () => {
     });
 
     it('should use PUBLIC_SCHEMA when specified', () => {
-      const context = createDatabaseContext(mockDatabase, PUBLIC_SCHEMA);
+      const context = createDatabaseContext(mockDatabase, PUBLIC_SCHEMA, 'test-env');
       assert.equal(context.schema, 'public');
     });
 
     it('should handle SSL disabled configuration', () => {
-      const context = createDatabaseContext(mockDatabase, 'testschema');
+      const context = createDatabaseContext(mockDatabase, 'testschema', 'test-env');
 
       // Check that knex was configured correctly
       assert.ok(context.db);
@@ -57,7 +57,7 @@ describe('Database Context', () => {
         ssl: true
       };
 
-      const context = createDatabaseContext(dbWithSsl, 'testschema');
+      const context = createDatabaseContext(dbWithSsl, 'testschema', 'test-env');
       assert.ok(context.db);
     });
 
@@ -76,7 +76,7 @@ describe('Database Context', () => {
       (fs as any).existsSync = () => true;
       (fs as any).readFileSync = () => 'mock-cert-content';
 
-      const context = createDatabaseContext(dbWithSsl, 'testschema');
+      const context = createDatabaseContext(dbWithSsl, 'testschema', 'test-env');
       assert.ok(context.db);
 
       // Restore fs functions
@@ -90,7 +90,7 @@ describe('Database Context', () => {
         connectionString: ''
       };
 
-      const context = createDatabaseContext(dbWithEmptyConn, 'testschema');
+      const context = createDatabaseContext(dbWithEmptyConn, 'testschema', 'test-env');
       assert.ok(context.db);
     });
 
@@ -100,7 +100,7 @@ describe('Database Context', () => {
         connectionString: 'postgresql://user:p@ss!word@localhost:5432/test-db'
       };
 
-      const context = createDatabaseContext(dbWithSpecialConn, 'testschema');
+      const context = createDatabaseContext(dbWithSpecialConn, 'testschema', 'test-env');
       assert.ok(context.db);
     });
 
@@ -108,7 +108,7 @@ describe('Database Context', () => {
       const schemas = ['public', 'private', 'test_schema', 'schema-123', ''];
 
       for (const schema of schemas) {
-        const context = createDatabaseContext(mockDatabase, schema);
+        const context = createDatabaseContext(mockDatabase, schema, 'test-env');
         assert.equal(context.schema, schema);
       }
     });
@@ -119,7 +119,7 @@ describe('Database Context', () => {
         extraProp: 'value'
       } as any;
 
-      const context = createDatabaseContext(dbWithExtra, 'testschema');
+      const context = createDatabaseContext(dbWithExtra, 'testschema', 'test-env');
       assert.equal(context.batchSize, 1000);
       assert.equal(context.maxRetries, 3);
     });
@@ -132,7 +132,7 @@ describe('Database Context', () => {
         initialRetryDelay: 0
       };
 
-      const context = createDatabaseContext(dbWithZeros, 'testschema');
+      const context = createDatabaseContext(dbWithZeros, 'testschema', 'test-env');
       assert.equal(context.batchSize, 0);
       assert.equal(context.maxRetries, 0);
       assert.equal(context.initialRetryDelay, 0);
@@ -146,7 +146,7 @@ describe('Database Context', () => {
         initialRetryDelay: -50
       };
 
-      const context = createDatabaseContext(dbWithNegatives, 'testschema');
+      const context = createDatabaseContext(dbWithNegatives, 'testschema', 'test-env');
       assert.equal(context.batchSize, -100);
       assert.equal(context.maxRetries, -5);
       assert.equal(context.initialRetryDelay, -50);
@@ -160,7 +160,7 @@ describe('Database Context', () => {
         initialRetryDelay: Number.MAX_SAFE_INTEGER
       };
 
-      const context = createDatabaseContext(dbWithLarge, 'testschema');
+      const context = createDatabaseContext(dbWithLarge, 'testschema', 'test-env');
       assert.equal(context.batchSize, Number.MAX_SAFE_INTEGER);
       assert.equal(context.maxRetries, Number.MAX_SAFE_INTEGER);
       assert.equal(context.initialRetryDelay, Number.MAX_SAFE_INTEGER);
@@ -170,23 +170,23 @@ describe('Database Context', () => {
   describe('Edge cases and error scenarios', () => {
     it('should handle null database object', () => {
       assert.throws(() => {
-        createDatabaseContext(null as any, 'testschema');
+        createDatabaseContext(null as any, 'testschema', 'test-env');
       });
     });
 
     it('should handle undefined database object', () => {
       assert.throws(() => {
-        createDatabaseContext(undefined as any, 'testschema');
+        createDatabaseContext(undefined as any, 'testschema', 'test-env');
       });
     });
 
     it('should handle null schema name', () => {
-      const context = createDatabaseContext(mockDatabase, null as any);
+      const context = createDatabaseContext(mockDatabase, null as any, 'test-env');
       assert.equal(context.schema, null);
     });
 
     it('should handle undefined schema name', () => {
-      const context = createDatabaseContext(mockDatabase, undefined as any);
+      const context = createDatabaseContext(mockDatabase, undefined as any, 'test-env');
       assert.equal(context.schema, undefined);
     });
 
@@ -195,7 +195,7 @@ describe('Database Context', () => {
         connectionString: 'postgresql://localhost/test'
       } as any;
 
-      const context = createDatabaseContext(minimalDb, 'testschema');
+      const context = createDatabaseContext(minimalDb, 'testschema', 'test-env');
       assert.ok(context.db);
       assert.equal(context.schema, 'testschema');
       assert.equal(context.batchSize, undefined);
@@ -213,7 +213,7 @@ describe('Database Context', () => {
       for (const db of malformedDbs) {
         // Should not throw, knex will handle validation
         assert.doesNotThrow(() => {
-          createDatabaseContext(db, 'testschema');
+          createDatabaseContext(db, 'testschema', 'test-env');
         });
       }
     });
@@ -225,13 +225,13 @@ describe('Database Context', () => {
       };
 
       // Should handle truthy values
-      const context = createDatabaseContext(dbWithWeirdSsl, 'testschema');
+      const context = createDatabaseContext(dbWithWeirdSsl, 'testschema', 'test-env');
       assert.ok(context.db);
     });
 
     it('should create independent contexts for multiple calls', () => {
-      const context1 = createDatabaseContext(mockDatabase, 'schema1');
-      const context2 = createDatabaseContext(mockDatabase, 'schema2');
+      const context1 = createDatabaseContext(mockDatabase, 'schema1', 'test-env');
+      const context2 = createDatabaseContext(mockDatabase, 'schema2', 'test-env');
 
       assert.notEqual(context1, context2);
       assert.notEqual(context1.db, context2.db);
@@ -248,7 +248,7 @@ describe('Database Context', () => {
       ];
 
       for (const schema of pgSchemas) {
-        const context = createDatabaseContext(mockDatabase, schema);
+        const context = createDatabaseContext(mockDatabase, schema, 'test-env');
         assert.equal(context.schema, schema);
       }
     });
@@ -256,7 +256,7 @@ describe('Database Context', () => {
 
   describe('DatabaseContext type', () => {
     it('should have correct shape', () => {
-      const context = createDatabaseContext(mockDatabase, 'testschema');
+      const context = createDatabaseContext(mockDatabase, 'testschema', 'test-env');
 
       assert.ok('db' in context);
       assert.ok('schema' in context);
@@ -266,7 +266,7 @@ describe('Database Context', () => {
     });
 
     it('should have correct property types', () => {
-      const context = createDatabaseContext(mockDatabase, 'testschema');
+      const context = createDatabaseContext(mockDatabase, 'testschema', 'test-env');
 
       assert.equal(typeof context.db, 'function'); // Knex instance is a function
       assert.equal(typeof context.schema, 'string');

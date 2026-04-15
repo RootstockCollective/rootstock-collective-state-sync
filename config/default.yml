@@ -1,4 +1,5 @@
 app:
+  envName: "unknown"
   initializeDb: true
   logLevel: "info"
   productionMode: false

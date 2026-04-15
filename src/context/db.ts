@@ -14,7 +14,7 @@ interface DatabaseContext {
 }
 
 // Factory function to create a database context
-const createDatabaseContext = (database: Database, schema: string): DatabaseContext => {
+const createDatabaseContext = (database: Database, schema: string, envName: string): DatabaseContext => {
   if (!database) {
     throw new TypeError('Database configuration is required');
   }
@@ -35,7 +35,7 @@ const createDatabaseContext = (database: Database, schema: string): DatabaseCont
     connection: {
       connectionString,
       ssl: sslConfig,
-      application_name: `state-sync-${process.env.NODE_ENV ?? 'unknown'}`,
+      application_name: `state-sync-${envName}`,
     },
     searchPath: [schema],
   });

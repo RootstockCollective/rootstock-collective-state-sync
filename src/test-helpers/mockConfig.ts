@@ -7,6 +7,7 @@ import { Config } from '../config/types';
 export const createMockConfig = (overrides?: Partial<Config>): Config => {
   return {
     app: {
+      envName: 'test',
       initializeDb: false,
       logLevel: 'error',
       productionMode: false,

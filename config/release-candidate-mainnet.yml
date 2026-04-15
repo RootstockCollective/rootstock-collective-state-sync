@@ -1,4 +1,5 @@
 app:
+  envName: "rc-mainnet"
   productionMode: true
   initializeDb: true
 blockchain:

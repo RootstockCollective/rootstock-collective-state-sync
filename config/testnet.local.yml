@@ -1,4 +1,5 @@
 app:
+  envName: "testnet-local"
   productionMode: false
   initializeDb: true
 database:

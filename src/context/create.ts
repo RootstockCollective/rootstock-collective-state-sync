@@ -16,7 +16,7 @@ const createContexts = (config: Config): AppContext => {
 
   return {
     schema: createSchemaContext(config.entities),
-    dbContext: createDatabaseContext(config.database, PUBLIC_SCHEMA),
+    dbContext: createDatabaseContext(config.database, PUBLIC_SCHEMA, config.app.envName),
     graphqlContexts,
     config
   };
@@ -25,7 +25,7 @@ const createContexts = (config: Config): AppContext => {
 // Pure function to create context with different schema
 const createContextWithSchema = (baseContext: AppContext, schemaName: string): AppContext => ({
   ...baseContext,
-  dbContext: createDatabaseContext(baseContext.config.database, schemaName)
+  dbContext: createDatabaseContext(baseContext.config.database, schemaName, baseContext.config.app.envName)
 });
 
 export { createContexts, createContextWithSchema };
