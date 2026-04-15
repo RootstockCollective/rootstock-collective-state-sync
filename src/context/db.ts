@@ -35,6 +35,7 @@ const createDatabaseContext = (database: Database, schema: string): DatabaseCont
     connection: {
       connectionString,
       ssl: sslConfig,
+      application_name: `state-sync-${process.env.NODE_ENV ?? 'unknown'}`,
     },
     searchPath: [schema],
   });
