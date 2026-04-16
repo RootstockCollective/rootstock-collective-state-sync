@@ -1,4 +1,5 @@
 app:
+  envName: "dao-qa"
   productionMode: true
   initializeDb: true
 blockchain:

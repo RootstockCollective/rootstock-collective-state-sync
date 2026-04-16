@@ -1,4 +1,5 @@
 app:
+  envName: "rc-testnet"
   productionMode: true
   initializeDb: true
 blockchain:

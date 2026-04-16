@@ -12,6 +12,7 @@ interface Config {
 }
 
 interface App {
+    envName: string;
     initializeDb: boolean;
     logLevel: log.LogLevelDesc;
     productionMode: boolean;
