@@ -29,6 +29,11 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
     const { id, blockNumber } = await getLastProcessedBlock(dbContext.db);
 
+    // No prior block data — initial state, not a reorg
+    if (blockNumber === BigInt(0)) {
+      return false;
+    }
+
     const {
       hash: onchainBlockHash,
     } = await client.getBlock({
