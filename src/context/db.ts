@@ -38,6 +38,12 @@ const createDatabaseContext = (database: Database, schema: string, envName: stri
       application_name: `state-sync-${envName}`,
     },
     searchPath: [schema],
+    pool: {
+      min: 0,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      acquireTimeoutMillis: 30_000,
+    },
   });
 
   return { db, schema, ...rest };

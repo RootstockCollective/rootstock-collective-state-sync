@@ -42,12 +42,16 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
       await createSchema(dbContext, NEW_SCHEMA);
       const newContext = createContextWithSchema(context, NEW_SCHEMA);
-      const entities = await createDb(newContext, IS_PRODUCTION_MODE, SHOULD_INITIALIZE_DB);
+      try {
+        const entities = await createDb(newContext, IS_PRODUCTION_MODE, SHOULD_INITIALIZE_DB);
 
-      // Initial sync of entities
-      await syncEntities(newContext, entities.filter(entity => entity !== 'LastProcessedBlock'));
+        // Initial sync of entities
+        await syncEntities(newContext, entities.filter(entity => entity !== 'LastProcessedBlock'));
 
-      await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
+        await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
+      } finally {
+        await newContext.dbContext.db.destroy();
+      }
 
       return true;
     }
