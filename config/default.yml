@@ -435,7 +435,7 @@ entities:
   - name: BtcVaultHistory
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: user
         type: Bytes
       - name: action
@@ -460,7 +460,7 @@ entities:
   - name: BtcVaultHistoryCounter
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: total
         type: BigInt
       - name: depositRequests
@@ -555,7 +555,7 @@ entities:
   - name: BtcDepositRequest
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: controller
         type: Bytes
       - name: owner
@@ -588,7 +588,7 @@ entities:
   - name: BtcRedeemRequest
     columns:
       - name: id
-        type: String
+        type: Bytes
       - name: controller
         type: Bytes
       - name: owner
