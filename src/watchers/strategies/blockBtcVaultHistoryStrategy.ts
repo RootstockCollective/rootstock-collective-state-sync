@@ -32,7 +32,7 @@ const createStrategy = (): ChangeStrategy => {
     const { context } = params;
     if (!params.blockNumber) {
       log.error(
-        'blockVaultHistoryStrategy->detectAndProcess: No block number provided, skipping processing',
+        'blockBtcVaultHistoryStrategy->detectAndProcess: No block number provided, skipping processing',
       );
       return false;
     }
@@ -46,7 +46,7 @@ const createStrategy = (): ChangeStrategy => {
     ) {
       const blocksUntilNext = LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD - params.blockNumber;
       log.info(
-        `blockVaultHistoryStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`,
+        `blockBtcVaultHistoryStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`,
       );
       return false;
     }
@@ -56,7 +56,7 @@ const createStrategy = (): ChangeStrategy => {
     const lastStoredBlock = await getLastBtcVaultHistoryBlock(context.dbContext.db);
     const fromBlock = lastStoredBlock > 0n ? lastStoredBlock + 1n : 0n;
     log.info(
-      `blockVaultHistoryStrategy->detectAndProcess: Last stored block: ${lastStoredBlock.toString()}, syncing vault history records from block ${fromBlock.toString()}`,
+      `blockBtcVaultHistoryStrategy->detectAndProcess: Last stored block: ${lastStoredBlock.toString()}, syncing BtcVaultHistory from block ${fromBlock.toString()}`,
     );
 
     // Verify BtcVaultHistory entity exists in schema
@@ -85,7 +85,7 @@ const createStrategy = (): ChangeStrategy => {
       LAST_PROCESSED_BLOCK = params.blockNumber;
 
       log.info(
-        `blockVaultHistoryStrategy->detectAndProcess: Synced vault history from block ${fromBlock.toString()}, stored last processed block: ${
+        `blockBtcVaultHistoryStrategy->detectAndProcess: Synced BtcVaultHistory from block ${fromBlock.toString()}, stored last processed block: ${
           params.blockNumber
         }`,
       );
@@ -103,4 +103,4 @@ const createStrategy = (): ChangeStrategy => {
   return strategy;
 };
 
-export const createVaultHistoryStrategy = () => createStrategy();
+export const createBtcVaultHistoryStrategy = () => createStrategy();

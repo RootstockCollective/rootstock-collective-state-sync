@@ -18,7 +18,7 @@ import {
   createNewProposalStrategy,
   createProposalStateStrategy,
   createStakingHistoryStrategy,
-  createVaultHistoryStrategy,
+  createBtcVaultHistoryStrategy,
 } from './strategies';
 import { executeBatchedStrategies } from './batchExecutor';
 
@@ -45,7 +45,7 @@ async function createBlockHandlerWithStrategies(
     createNewProposalStrategy(),
     createProposalStateStrategy(),
     createStakingHistoryStrategy(),
-    createVaultHistoryStrategy(),
+    createBtcVaultHistoryStrategy(),
   ];
 
   // Separate strategies by batching capability
