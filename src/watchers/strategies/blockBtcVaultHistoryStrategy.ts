@@ -7,12 +7,12 @@ import { getConfig } from '../../config/config';
 
 let LAST_PROCESSED_BLOCK = 0n;
 
-interface VaultHistoryRecord {
+interface BtcVaultHistoryRecord {
   blockNumber: string;
 }
 
-const getLastVaultHistoryBlock = async (db: AppContext['dbContext']['db']): Promise<bigint> => {
-  const result = await db<VaultHistoryRecord>('VaultHistory')
+const getLastBtcVaultHistoryBlock = async (db: AppContext['dbContext']['db']): Promise<bigint> => {
+  const result = await db<BtcVaultHistoryRecord>('BtcVaultHistory')
     .orderBy('blockNumber', 'desc')
     .first();
 
@@ -32,7 +32,7 @@ const createStrategy = (): ChangeStrategy => {
     const { context } = params;
     if (!params.blockNumber) {
       log.error(
-        'blockVaultHistoryStrategy->detectAndProcess: No block number provided, skipping processing',
+        'blockBtcVaultHistoryStrategy->detectAndProcess: No block number provided, skipping processing',
       );
       return false;
     }
@@ -46,29 +46,33 @@ const createStrategy = (): ChangeStrategy => {
     ) {
       const blocksUntilNext = LAST_PROCESSED_BLOCK + BLOCK_INTERVAL_THRESHOLD - params.blockNumber;
       log.info(
-        `blockVaultHistoryStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`,
+        `blockBtcVaultHistoryStrategy->detectAndProcess: Skipping block ${params.blockNumber}, not enough blocks since last processed (${LAST_PROCESSED_BLOCK}). Will process in ${blocksUntilNext} blocks`,
       );
       return false;
     }
 
-    // Get the last block number from VaultHistory in the database
+    // Get the last block number from BtcVaultHistory in the database
     // This ensures we only query new records since the last one we have
-    const lastStoredBlock = await getLastVaultHistoryBlock(context.dbContext.db);
+    const lastStoredBlock = await getLastBtcVaultHistoryBlock(context.dbContext.db);
     const fromBlock = lastStoredBlock > 0n ? lastStoredBlock + 1n : 0n;
     log.info(
-      `blockVaultHistoryStrategy->detectAndProcess: Last stored block: ${lastStoredBlock.toString()}, syncing vault history records from block ${fromBlock.toString()}`,
+      `blockBtcVaultHistoryStrategy->detectAndProcess: Last stored block: ${lastStoredBlock.toString()}, syncing BtcVaultHistory from block ${fromBlock.toString()}`,
     );
 
-    // Verify VaultHistory entity exists in schema
-    const vaultHistoryEntity = context.schema.entities.get('VaultHistory');
-    if (!vaultHistoryEntity) {
-      log.error('VaultHistory entity not found in schema');
+    // Verify BtcVaultHistory entity exists in schema
+    const btcVaultHistoryEntity = context.schema.entities.get('BtcVaultHistory');
+    if (!btcVaultHistoryEntity) {
+      log.error('BtcVaultHistory entity not found in schema');
       return false;
     }
 
-    // Sync VaultHistory
-    // Since VaultHistory records are immutable (deposit/withdraw events), we only need to sync new ones
-    const allEntitiesToSync = ['VaultHistory'];
+    // Sync BtcVaultHistory (and related counters/requests used by the app)
+    const allEntitiesToSync = [
+      'BtcVaultHistory',
+      'BtcVaultHistoryCounter',
+      'BtcDepositRequest',
+      'BtcRedeemRequest',
+    ];
     const validEntities = allEntitiesToSync.filter(entityName =>
       context.schema.entities.has(entityName),
     );
@@ -81,7 +85,7 @@ const createStrategy = (): ChangeStrategy => {
       LAST_PROCESSED_BLOCK = params.blockNumber;
 
       log.info(
-        `blockVaultHistoryStrategy->detectAndProcess: Synced vault history from block ${fromBlock.toString()}, stored last processed block: ${
+        `blockBtcVaultHistoryStrategy->detectAndProcess: Synced BtcVaultHistory from block ${fromBlock.toString()}, stored last processed block: ${
           params.blockNumber
         }`,
       );
@@ -93,10 +97,10 @@ const createStrategy = (): ChangeStrategy => {
   };
 
   const strategy = {
-    name: 'VaultHistory',
+    name: 'BtcVaultHistory',
     detectAndProcess,
   };
   return strategy;
 };
 
-export const createVaultHistoryStrategy = () => createStrategy();
+export const createBtcVaultHistoryStrategy = () => createStrategy();
