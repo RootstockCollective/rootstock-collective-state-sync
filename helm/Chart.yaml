@@ -1,0 +1,6 @@
+apiVersion: v2
+name: state-sync
+description: Rootstock Collective State Sync service
+type: application
+version: 0.1.0
+appVersion: "1.4.0"
