@@ -646,6 +646,45 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
+  - name: BtcVaultLog
+    columns:
+      - name: id
+        type: String
+      - name: vault
+        type: Bytes
+      - name: type
+        type: String
+      - name: amountInWei
+        type: BigInt
+        nullable: true
+      - name: detail
+        type: String
+        nullable: true
+      - name: isNative
+        type: Boolean
+        nullable: true
+      - name: role
+        type: String
+        nullable: true
+      - name: actor
+        type: Bytes
+      - name: from
+        type: Bytes
+        nullable: true
+      - name: destination
+        type: Bytes
+        nullable: true
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+      - name: logIndex
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
   - name: SubgraphMetadata
     columns:
       - name: id
