@@ -496,6 +496,8 @@ entities:
         type: BigInt
       - name: requestsProcessed
         type: BigInt
+      - name: requestsProcessedInEpoch
+        type: BigInt
       - name: blockNumber
         type: BigInt
       - name: transactionHash
