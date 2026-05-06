@@ -687,6 +687,29 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
+  - name: VaultHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: user
+        type: Bytes
+      - name: action
+        type: String
+      - name: assets
+        type: BigInt
+      - name: shares
+        type: BigInt
+      - name: balanceAfter
+        type: BigInt
+      - name: blockNumber
+        type: BigInt
+      - name: timestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
   - name: SubgraphMetadata
     columns:
       - name: id
