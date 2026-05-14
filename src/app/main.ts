@@ -30,7 +30,7 @@ const main = async () => {
     process.on('SIGINT', shutdown);
 
     // Create database schema
-    const entities = await createDb(context, productionMode, initializeDb);
+    const entities = await createDb(context, initializeDb);
 
     // Initial sync of entities
     await syncEntities(context, entities.filter(entity => entity !== 'LastProcessedBlock')); // TODO: We should change this a little bit, so that we don't have to filter out LastProcessedBlock here in this hardcoded way

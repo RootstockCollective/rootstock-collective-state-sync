@@ -5,7 +5,7 @@ import { AppContext } from '../../context/types';
 import { createContextWithSchema } from '../../context/create';
 import { ChangeStrategy } from './types';
 import { getLastProcessedBlock } from './utils';
-import { createSchema, switchSchema } from '../../handlers/schema';
+import { createSchemaFresh, switchSchema, withReorgLock } from '../../handlers/schema';
 import { createDb } from '../../handlers/dbCreator';
 import { syncEntities } from '../../handlers/subgraphSyncer';
 
@@ -15,7 +15,6 @@ const convertDbIdToHash = (id: string): Hex => {
 
 const NEW_SCHEMA = 'tmp_public';
 const SHOULD_INITIALIZE_DB = false;
-const IS_PRODUCTION_MODE = true;
 export const createRevertReorgsStrategy = (): ChangeStrategy => {
 
   const detectAndProcess = async ({
@@ -45,20 +44,33 @@ export const createRevertReorgsStrategy = (): ChangeStrategy => {
     if (onchainBlockHash !== blockHash) {
       info('Reorg detected');
 
-      await createSchema(dbContext, NEW_SCHEMA);
-      const newContext = createContextWithSchema(context, NEW_SCHEMA);
-      try {
-        const entities = await createDb(newContext, IS_PRODUCTION_MODE, SHOULD_INITIALIZE_DB);
+      const outcome = await withReorgLock(dbContext, async (): Promise<boolean> => {
+        await createSchemaFresh(dbContext, NEW_SCHEMA);
+        const newContext = createContextWithSchema(context, NEW_SCHEMA);
+        let succeeded = false;
+        try {
+          const entities = await createDb(newContext, SHOULD_INITIALIZE_DB);
 
-        // Initial sync of entities
-        await syncEntities(newContext, entities.filter(entity => entity !== 'LastProcessedBlock'));
+          // Initial sync of entities
+          await syncEntities(newContext, entities.filter(entity => entity !== 'LastProcessedBlock'));
 
-        await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
-      } finally {
-        await newContext.dbContext.db.destroy();
+          await switchSchema(dbContext, NEW_SCHEMA, PUBLIC_SCHEMA);
+          succeeded = true;
+          return true;
+        } finally {
+          await newContext.dbContext.db.destroy();
+          if (!succeeded) {
+            await dbContext.db.raw('DROP SCHEMA IF EXISTS ?? CASCADE', [NEW_SCHEMA]);
+          }
+        }
+      });
+
+      if (!outcome.acquired) {
+        info('Reorg cleanup already in progress, skipping');
+        return false;
       }
 
-      return true;
+      return outcome.result;
     }
 
     return false;
