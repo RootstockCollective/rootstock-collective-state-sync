@@ -8,6 +8,6 @@ image:
 
 externalSecrets:
   parameterPaths:
-    databaseConnectionString: /rscoll-state-sync/dev/database-uri
+    databaseConnectionString: /rscoll-state-sync-eks/dev/database-uri
     theGraphApiKeyCR: /rscoll-dev/dev/the-graph-api-key
     theGraphApiKeyGov: /rscoll-dev/dev/dao-graph-api-key
