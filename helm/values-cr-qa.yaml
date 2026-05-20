@@ -5,6 +5,6 @@ env:
 
 externalSecrets:
   parameterPaths:
-    databaseConnectionString: /rscoll-state-sync/cr-qa/database-uri
+    databaseConnectionString: /rscoll-state-sync-eks/cr-qa/database-uri
     theGraphApiKeyCR: /rscoll-dev/cr-qa/the-graph-api-key
     theGraphApiKeyGov: /rscoll-dev/cr-qa/dao-graph-api-key

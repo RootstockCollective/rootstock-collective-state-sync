@@ -8,6 +8,6 @@ image:
 
 externalSecrets:
   parameterPaths:
-    databaseConnectionString: /rscoll-state-sync/rc-testnet/database-uri
+    databaseConnectionString: /rscoll-state-sync-eks/rc-testnet/database-uri
     theGraphApiKeyCR: /rscoll-dev/rc-testnet/the-graph-api-key
     theGraphApiKeyGov: /rscoll-dev/rc-testnet/dao-graph-api-key
