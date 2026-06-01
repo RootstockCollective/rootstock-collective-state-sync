@@ -3,6 +3,7 @@ import log from 'loglevel';
 import { SubgraphProvider } from '../config/types';
 import { buildBatchQuery } from '../handlers/subgraphQueryBuilder';
 import { EntityDataCollection, EntityRecord, WithMetadata } from '../handlers/types';
+import { maskEndpointApiKey } from '../utils/maskEndpointApiKey';
 import { pluralizeEntityName } from '../utils/pluralizeEntityName';
 
 // Type definitions for metrics
@@ -92,25 +93,6 @@ interface GraphQlContext {
     }
 }
 
-/**
- * Masks the API key in a URL for safe logging.
- * Example: https://api.thegraph.com/abc123/subgraph -> https://api.thegraph.com/*** /subgraph
- */
-function maskApiKey(endpoint: string): string {
-  try {
-    const url = new URL(endpoint);
-    const segments = url.pathname.split('/').filter(Boolean);
-    // Pattern: /apiKey/subgraphId - redact first segment if it looks like an API key
-    if (segments.length >= 2 && segments[0].length > 20) {
-      segments[0] = '***';
-      url.pathname = '/' + segments.join('/');
-    }
-    return url.toString();
-  } catch {
-    return '[invalid-endpoint]';
-  }
-}
-
 // Function to execute a batch of requests
 const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
   context: GraphQlContext,
@@ -134,13 +116,13 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     error?: string;
   } = {
     timestamp: startTime,
-    provider: maskApiKey(context.endpoint),
+    provider: maskEndpointApiKey(context.endpoint),
     queryCount,
     success: false
   };
   metrics.requestHistory.push(requestEntry);
 
-  log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount}: ${queryCount} queries to ${maskApiKey(context.endpoint)}`);
+  log.info(`[subgraphProvider:executeRequests] Request #${metrics.requestCount}: ${queryCount} queries to ${maskEndpointApiKey(context.endpoint)}`);
 
   // Count queries in batch for HTTP metrics
   // Use requests.length directly - more reliable than regex parsing
@@ -159,7 +141,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
     // This ensures we count all HTTP requests, not just successful ones
     metrics.httpRequestCount++;
     const httpRequestLogEntry: HttpRequestLogEntry = {
-      url: maskApiKey(context.endpoint),
+      url: maskEndpointApiKey(context.endpoint),
       method: 'POST',
       timestamp: httpStartTime,
       queryCount: actualQueryCount
@@ -251,7 +233,7 @@ const executeRequests = async <Requests extends readonly GraphQLRequest[]>(
       // Estimate start time based on duration (approximate)
       const estimatedStartTime = Date.now() - duration;
       metrics.httpRequestLog.push({
-        url: maskApiKey(context.endpoint),
+        url: maskEndpointApiKey(context.endpoint),
         method: 'POST',
         timestamp: estimatedStartTime,
         queryCount: actualQueryCount,
