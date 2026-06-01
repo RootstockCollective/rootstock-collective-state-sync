@@ -13,8 +13,15 @@ interface DatabaseContext {
     initialRetryDelay: number;
 }
 
+const DEFAULT_CA_CERT_PATH = '/app/rds-ca-cert.pem';
+
 // Factory function to create a database context
-const createDatabaseContext = (database: Database, schema: string, envName: string): DatabaseContext => {
+const createDatabaseContext = (
+  database: Database,
+  schema: string,
+  envName: string,
+  certPath: string = DEFAULT_CA_CERT_PATH,
+): DatabaseContext => {
   if (!database) {
     throw new TypeError('Database configuration is required');
   }
@@ -23,11 +30,17 @@ const createDatabaseContext = (database: Database, schema: string, envName: stri
   let sslConfig: ConnectionOptions | boolean = false;
 
   if (ssl) {
-    const certPath = '/app/rds-ca-cert.pem';
-    sslConfig = fs.existsSync(certPath) ? {
+    if (!fs.existsSync(certPath)) {
+      throw new Error(
+        `Database SSL is enabled but CA certificate not found at ${certPath}. ` +
+        'Refusing to connect over an unencrypted channel. ' +
+        'Provide the certificate file or set database.ssl to false explicitly.'
+      );
+    }
+    sslConfig = {
       rejectUnauthorized: true,
       ca: fs.readFileSync(certPath).toString(),
-    } : false;
+    };
   }
 
   const db = knex({
