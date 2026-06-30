@@ -177,7 +177,7 @@ const createTable = async (
   log.info(`Created table: ${entity.name}`);
 };
 
-const createDb = async (context: AppContext, productionMode: boolean, initializeDb: boolean): Promise<string[]> => {
+const createDb = async (context: AppContext, initializeDb: boolean): Promise<string[]> => {
   const { schema, dbContext: { db } } = context;
 
   const schemaEntities = Array.from(schema.entities.keys());
