@@ -1,6 +1,6 @@
 {
   "name": "rootstock-collective-state-sync",
-  "version": "1.6.0",
+  "version": "1.6.2",
   "main": "src/app/main.ts",
   "scripts": {
     "test": "NODE_ENV=test node --import tsx --test 'src/**/*.test.ts'",

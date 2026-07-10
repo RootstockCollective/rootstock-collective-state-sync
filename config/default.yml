@@ -4,7 +4,7 @@ app:
   logLevel: "info"
   productionMode: false
 database:
-  batchSize: 10000
+  batchSize: 5000
   maxRetries: 3
   initialRetryDelay: 1000
   ssl: true
