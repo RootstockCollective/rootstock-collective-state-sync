@@ -12,8 +12,9 @@ import { createClient } from '../client/createClient';
 import { AppContext } from '../context/types';
 import { getRequestMetrics, getHttpMetrics } from '../context/subgraphProvider';
 import blockChangeLogStrategy from './strategies/blockChangeLogStrategy';
-import { createRevertReorgsStrategy } from './strategies/reorgCleanupStrategy';
+import { runReorgGate } from './strategies/reorgCleanupStrategy';
 import { ChangeStrategy, BatchableStrategy } from './strategies/types';
+import { withSharedReorgLock } from '../handlers/schema';
 import {
   createNewProposalStrategy,
   createProposalStateStrategy,
@@ -40,7 +41,6 @@ async function createBlockHandlerWithStrategies(
   client: PublicClient
 ): Promise<(blockNumber: bigint | null) => Promise<void>> {
   const strategies: ChangeStrategy[] = [
-    createRevertReorgsStrategy(),
     blockChangeLogStrategy,
     createNewProposalStrategy(),
     createProposalStateStrategy(),
@@ -66,17 +66,37 @@ async function createBlockHandlerWithStrategies(
       return;
     }
 
-    // Capture metrics before execution
-    const metricsBefore = captureMetrics();
+    // Reorg gate decides whether the rest of this tick should run. When any
+    // session is rebuilding public, writes from other strategies would be
+    // dropped by the upcoming switchSchema, so we skip them here.
+    let shouldSkipRest = false;
+    try {
+      const gate = await runReorgGate({ context, client });
+      shouldSkipRest = gate.skipRest;
+    } catch (error) {
+      log.error('[blockWatcher:handleBlock] Reorg gate failed, skipping this block:', error);
+      return;
+    }
 
-    // Execute batchable strategies together
-    await executeBatchableStrategies(batchableStrategies, context, client, blockNumber);
+    if (shouldSkipRest) {
+      log.info(`[blockWatcher:handleBlock] Skipping block ${blockNumber}: reorg cleanup in progress`);
+      return;
+    }
 
-    // Execute individual strategies
-    await runStrategiesOneByOne(individualStrategies, context, client, blockNumber, 'non-batchable');
+    // Hold a shared advisory lock for the duration of strategy execution so a
+    // rebuild on any replica cannot call switchSchema while these writes are
+    // in flight. The lock-holder transaction does no writes itself; strategies
+    // continue to write through other pool connections as before.
+    const lockOutcome = await withSharedReorgLock(context.dbContext, async () => {
+      const metricsBefore = captureMetrics();
+      await executeBatchableStrategies(batchableStrategies, context, client, blockNumber);
+      await runStrategiesOneByOne(individualStrategies, context, client, blockNumber, 'non-batchable');
+      logMetricsSummary(blockNumber, metricsBefore);
+    });
 
-    // Log metrics summary
-    logMetricsSummary(blockNumber, metricsBefore);
+    if (!lockOutcome.acquired) {
+      log.info(`[blockWatcher:handleBlock] Skipping block ${blockNumber}: rebuild in progress, shared lock unavailable`);
+    }
   };
 }
 
@@ -163,10 +183,52 @@ async function watchBlocks(context: AppContext): Promise<() => void> {
   const client = createClient(context.config);
   const handleBlock = await createBlockHandlerWithStrategies(context, client);
 
+  // Coalesce onBlock callbacks: when ticks are slow, multiple new blocks may
+  // arrive before the current tick finishes. Strategies are cursor-driven, so
+  // running one tick at the latest head catches up everything in between.
+  // We keep a single-slot "pending block" — newer arrivals overwrite older
+  // pending ones — and a `running` flag so only one tick executes at a time.
+  let pendingBlock: bigint | null = null;
+  let running = false;
+  let lastTickedBlock: bigint | null = null;
+
+  const drain = async (): Promise<void> => {
+    if (running) {
+      return;
+    }
+    running = true;
+    try {
+      while (pendingBlock !== null) {
+        const blockNumber = pendingBlock;
+        pendingBlock = null;
+
+        const coalesced = lastTickedBlock !== null && blockNumber > lastTickedBlock + 1n
+          ? blockNumber - lastTickedBlock - 1n
+          : 0n;
+        const suffix = coalesced > 0n ? ` (coalesced ${coalesced} intermediate block(s))` : '';
+        log.info(`[blockWatcher:watchBlocks] Processing block ${blockNumber}${suffix}`);
+
+        try {
+          await handleBlock(blockNumber);
+        } catch (error) {
+          log.error(`[blockWatcher:watchBlocks] Block ${blockNumber} failed:`, error);
+        }
+        lastTickedBlock = blockNumber;
+      }
+    } finally {
+      running = false;
+    }
+  };
+
   return client.watchBlocks({
-    onBlock: async (block: Block) => {
-      log.info(`[blockWatcher:watchBlocks] Processing block ${block.number}`);
-      await handleBlock(block.number);
+    onBlock: (block: Block) => {
+      if (block.number === null) {
+        return;
+      }
+      if (pendingBlock === null || block.number > pendingBlock) {
+        pendingBlock = block.number;
+      }
+      void drain();
     },
     emitMissed: true,
     pollingInterval: 1000,

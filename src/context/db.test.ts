@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { createDatabaseContext, PUBLIC_SCHEMA } from './db';
 import { Database } from '../config/types';
-import * as fs from 'fs';
 
 describe('Database Context', () => {
   let mockDatabase: Database;
+
+  let existingCertPath: string;
+  const missingCertPath = path.join(os.tmpdir(), 'state-sync-test-missing.pem');
 
   beforeEach(() => {
     mockDatabase = {
@@ -15,6 +20,17 @@ describe('Database Context', () => {
       maxRetries: 3,
       initialRetryDelay: 100
     };
+    existingCertPath = path.join(
+      os.tmpdir(),
+      `state-sync-test-cert-${Date.now()}-${Math.random().toString(36).slice(2)}.pem`
+    );
+    fs.writeFileSync(existingCertPath, 'fake-cert-content');
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(existingCertPath)) {
+      fs.unlinkSync(existingCertPath);
+    }
   });
 
   describe('PUBLIC_SCHEMA constant', () => {
@@ -51,37 +67,29 @@ describe('Database Context', () => {
       assert.ok(context.db.client);
     });
 
-    it('should handle SSL enabled without cert file', () => {
-      const dbWithSsl: Database = {
-        ...mockDatabase,
-        ssl: true
-      };
+    it('should throw when SSL is enabled but cert file is missing', () => {
+      const dbWithSsl: Database = { ...mockDatabase, ssl: true };
 
-      const context = createDatabaseContext(dbWithSsl, 'testschema', 'test-env');
-      assert.ok(context.db);
+      assert.throws(
+        () => createDatabaseContext(dbWithSsl, 'testschema', 'test-env', missingCertPath),
+        /SSL is enabled but CA certificate not found/
+      );
+    });
+
+    it('should not silently downgrade to a non-SSL connection', () => {
+      const dbWithSsl: Database = { ...mockDatabase, ssl: true };
+
+      assert.throws(
+        () => createDatabaseContext(dbWithSsl, 'testschema', 'test-env', missingCertPath),
+        /Refusing to connect over an unencrypted channel/
+      );
     });
 
     it('should handle SSL enabled with cert file', () => {
-      // This test would need to mock fs.existsSync to return true
-      // and fs.readFileSync to return cert content
-      const dbWithSsl: Database = {
-        ...mockDatabase,
-        ssl: true
-      };
+      const dbWithSsl: Database = { ...mockDatabase, ssl: true };
 
-      // Mock fs to simulate cert file exists
-      const originalExistsSync = fs.existsSync;
-      const originalReadFileSync = fs.readFileSync;
-
-      (fs as any).existsSync = () => true;
-      (fs as any).readFileSync = () => 'mock-cert-content';
-
-      const context = createDatabaseContext(dbWithSsl, 'testschema', 'test-env');
+      const context = createDatabaseContext(dbWithSsl, 'testschema', 'test-env', existingCertPath);
       assert.ok(context.db);
-
-      // Restore fs functions
-      (fs as any).existsSync = originalExistsSync;
-      (fs as any).readFileSync = originalReadFileSync;
     });
 
     it('should handle empty connection string', () => {
@@ -224,8 +232,7 @@ describe('Database Context', () => {
         ssl: 'true' as any  // String instead of boolean
       };
 
-      // Should handle truthy values
-      const context = createDatabaseContext(dbWithWeirdSsl, 'testschema', 'test-env');
+      const context = createDatabaseContext(dbWithWeirdSsl, 'testschema', 'test-env', existingCertPath);
       assert.ok(context.db);
     });
 

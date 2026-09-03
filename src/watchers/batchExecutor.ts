@@ -24,6 +24,7 @@ import {
 import { AppContext } from '../context/types';
 import { saveSubgraphMetadata } from '../handlers/subgraphMetadata';
 import { EntityDataCollection } from '../handlers/types';
+import { maskEndpointApiKey } from '../utils/maskEndpointApiKey';
 
 /**
  * Represents a group of queries targeting the same subgraph endpoint.
@@ -303,7 +304,7 @@ async function executeBatchedQueries(
   subgraphName?: string | undefined
 ): Promise<boolean> {
   try {
-    log.info(`[BatchExecutor] Batching ${group.queries.length} queries to ${endpoint}`);
+    log.info(`[BatchExecutor] Batching ${group.queries.length} queries to ${maskEndpointApiKey(endpoint)}`);
 
     const { requests, subgraphName: resolvedSubgraphName } =
       buildRequestsWithOptionalMetadata(group, params, subgraphName);
@@ -317,7 +318,7 @@ async function executeBatchedQueries(
     await routeResultsToStrategies(group.queries, batchResults, params, results);
     return true;
   } catch (error) {
-    log.error(`[BatchExecutor] Batch failed for ${endpoint}:`, error);
+    log.error(`[BatchExecutor] Batch failed for ${maskEndpointApiKey(endpoint)}:`, error);
     return false;
   }
 }

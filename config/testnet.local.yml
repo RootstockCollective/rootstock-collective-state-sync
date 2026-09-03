@@ -1,6 +1,6 @@
 app:
   envName: "testnet-local"
-  productionMode: false
+  productionMode: true
   initializeDb: true
 database:
   ssl: false

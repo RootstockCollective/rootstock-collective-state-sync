@@ -6,11 +6,11 @@ blockchain:
   network: "testnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmbCopWKNeFArUuJ5GuG9mGQ9ZNgbdv81UA1b2kiKoEUmB"
+    id: "deployments/id/QmXKfMurwNnVQ5N6AL9QfQEYHw39sxUgGRu2ms3DR7KsXt"
   governance:
     id: "deployments/id/QmaWv7QpY5zejUdS3gFNN2GLXJe4VLEspVDXKFwbbmpAnE"
   usd-vault:
-    id: "subgraphs/id/DubnT1NzbethAcBe6Mf6DJHvK5CNfrmCabjbA7h8cZsQ"
+    id: "deployments/id/QmXNya5TdaMZR5odDDkbHSq4yz3FBmh3YJs8ASRn68kQKX"
 contracts:
   - name: BackersManager
     address: "0x70AC0FE4F8BCA42Aa7e713E1EDA2E8166d0f8Ed8"

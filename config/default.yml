@@ -4,7 +4,7 @@ app:
   logLevel: "info"
   productionMode: false
 database:
-  batchSize: 10000
+  batchSize: 5000
   maxRetries: 3
   initialRetryDelay: 1000
   ssl: true
@@ -496,6 +496,8 @@ entities:
         type: BigInt
       - name: requestsProcessed
         type: BigInt
+      - name: requestsProcessedInEpoch
+        type: BigInt
       - name: blockNumber
         type: BigInt
       - name: transactionHash
@@ -643,6 +645,68 @@ entities:
         type: BigInt
       - name: lastUpdatedBlock
         type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: BtcVaultLog
+    columns:
+      - name: id
+        type: String
+      - name: vault
+        type: Bytes
+      - name: type
+        type: String
+      - name: amountInWei
+        type: BigInt
+        nullable: true
+      - name: detail
+        type: String
+        nullable: true
+      - name: isNative
+        type: Boolean
+        nullable: true
+      - name: role
+        type: String
+        nullable: true
+      - name: actor
+        type: Bytes
+      - name: from
+        type: Bytes
+        nullable: true
+      - name: destination
+        type: Bytes
+        nullable: true
+      - name: blockNumber
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+      - name: logIndex
+        type: BigInt
+    primaryKey:
+      - id
+    subgraphProvider: "usd-vault"
+  - name: VaultHistory
+    columns:
+      - name: id
+        type: Bytes
+      - name: user
+        type: Bytes
+      - name: action
+        type: String
+      - name: assets
+        type: BigInt
+      - name: shares
+        type: BigInt
+      - name: balanceAfter
+        type: BigInt
+      - name: blockNumber
+        type: BigInt
+      - name: timestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
     primaryKey:
       - id
     subgraphProvider: "usd-vault"
