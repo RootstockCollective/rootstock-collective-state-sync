@@ -340,6 +340,29 @@ entities:
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
+  - name: GaugeNotifyReward
+    columns:
+      - name: id
+        type: Bytes
+      - name: cycleStart
+        type: BigInt
+      - name: blockHash
+        type: Bytes
+      - name: gauge
+        type: Bytes
+      - name: rewardToken
+        type: Bytes
+      - name: builderAmount
+        type: BigInt
+      - name: backersAmount
+        type: BigInt
+      - name: blockTimestamp
+        type: BigInt
+      - name: transactionHash
+        type: Bytes
+    primaryKey:
+      - id
+    subgraphProvider: "collective-rewards"
   - name: Account
     columns:
       - name: id
