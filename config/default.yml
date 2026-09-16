@@ -221,6 +221,9 @@ entities:
         type: BigInt
       - name: distributionDuration
         type: BigInt
+      - name: distributionFinishedAt
+        type: BigInt
+        nullable: true
     primaryKey:
       - id
     subgraphProvider: "collective-rewards"
