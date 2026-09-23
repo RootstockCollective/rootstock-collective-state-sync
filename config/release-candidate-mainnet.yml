@@ -6,7 +6,7 @@ blockchain:
   network: "mainnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmXLcxVAFatcrXYyDA7kFGUZuAiG1kvavwrRhxWn1PnvGF"
+    id: "deployments/id/QmXheUDLEHyp9ZESwVFw4nEJqtVpR6EXNycU6Hw1Toa96q"
   governance:
     id: "deployments/id/QmXWSRQqRXvVZf5FS2nHBmyQjicdssziZVjqTtpd5uSyLv"
   usd-vault:
