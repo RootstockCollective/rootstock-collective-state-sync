@@ -6,7 +6,7 @@ blockchain:
   network: "testnet"
 subgraphProviders:
   collective-rewards:
-    id: "deployments/id/QmZ8QwDhUbvfDd72vsnXnQGvL4jNk1eVpWpX3iuHFpf2Mu"
+    id: "deployments/id/QmUofDEnGR6oRtAJB33CsaSbVLmx8E9MaCJ7vsuV5XZA9i"
   governance:
     id: "deployments/id/QmaWv7QpY5zejUdS3gFNN2GLXJe4VLEspVDXKFwbbmpAnE"
   usd-vault:
