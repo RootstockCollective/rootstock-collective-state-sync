@@ -37,7 +37,7 @@ cd rootstock-collective-state-sync
 ### 2. Install Dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 3. Set Up Environment Variables

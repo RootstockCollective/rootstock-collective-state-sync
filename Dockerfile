@@ -3,7 +3,7 @@ FROM node:24-alpine@sha256:7aaba6b13a55a1d78411a1162c1994428ed039c6bbef7b1d9859c
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
@@ -17,9 +17,14 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/config ./config/
 
 # Download AWS RDS CA certificate
-RUN apk add --no-cache wget && \
-    wget -O rds-ca-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+RUN node -e "\
+  fetch('https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem').then(async (res) => { \
+    if (!res.ok) throw new Error('Failed to download RDS CA bundle: HTTP ' + res.status); \
+    const pem = await res.text(); \
+    if (!pem.includes('-----BEGIN CERTIFICATE-----')) throw new Error('RDS CA bundle is not a PEM file'); \
+    require('fs').writeFileSync('rds-ca-cert.pem', pem); \
+  })"
 
-RUN npm ci
+RUN npm ci --omit=dev
 
 CMD ["node", "dist/app/main.js"]

@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
-          node-version: '22.x'
+          node-version: '22.23.2'
           cache: 'npm'
       
       - name: Install dependencies
@@ -69,8 +69,9 @@ jobs:
       
       - name: TruffleHog OSS
         run: |
+          # v3.97.5
           docker run --rm -v "$PWD:/pwd" \
-            trufflesecurity/trufflehog:latest \
+            trufflesecurity/trufflehog@sha256:1cec88f18ca39e26e04e61fe9d886c9c4e5f2fc0ba4f2ed185cac0722bd8a076 \
             git file:///pwd --since-commit HEAD --only-verified --fail
 
   sast-scan:
