@@ -3,7 +3,8 @@ name: Deploy to Amazon EKS (dao-qa)
 on:
   push:
     branches:
-      - feat/add-helm-chart-for-eks-deployment
+      - main
+  workflow_dispatch:
 
 permissions: read-all
 
