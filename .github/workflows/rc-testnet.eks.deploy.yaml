@@ -11,7 +11,7 @@ permissions: read-all
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: rscoll-state-sync
-  EKS_CLUSTER: rscoll-dev
+  EKS_CLUSTER: rscoll
   HELM_RELEASE: state-sync-rc-testnet
   NAMESPACE: rc-testnet
 
