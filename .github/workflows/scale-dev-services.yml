@@ -9,7 +9,6 @@ on:
         required: true
         type: choice
         options:
-          - rscoll-state-sync-cr-qa
           - rscoll-state-sync-dao-qa
           - rscoll-state-sync-dev
           - rscoll-state-sync-rc-mainnet

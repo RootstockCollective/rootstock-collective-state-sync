@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "state-sync.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "state-sync.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "state-sync.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "state-sync.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+          protocol: TCP
+        env:
+        {{- range $key, $value := .Values.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        - name: DATABASE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "state-sync.fullname" . }}-secrets
+              key: database-connection-string
+        - name: THE_GRAPH_API_KEY_CR
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "state-sync.fullname" . }}-secrets
+              key: the-graph-api-key-cr
+        - name: THE_GRAPH_API_KEY_GOV
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "state-sync.fullname" . }}-secrets
+              key: the-graph-api-key-gov
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}

@@ -61,14 +61,13 @@ Choose or create a configuration file in the `./config` directory. Available con
 
 - `testnet.local.yml` - Local development
 - `dao.qa.yaml` - DAO QA environment
-- `cr.qa.yaml` - CR QA environment
 - `release-candidate.yaml` - Release candidate environment
 - `mainnet.yaml` - Production mainnet
 
 To use a specific configuration, set the `NODE_ENV` environment variable:
 
 ```bash
-export NODE_ENV=testnet.local  # or dao.qa, cr.qa, release-candidate, mainnet
+export NODE_ENV=testnet.local  # or dao.qa, release-candidate, mainnet
 ```
 
 ## 🐳 Docker Setup (Recommended)
