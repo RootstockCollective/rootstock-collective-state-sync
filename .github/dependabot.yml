@@ -60,3 +60,48 @@ updates:
       - "security"
     commit-message:
       prefix: "ci"
+
+  # Enable version updates for the Node base image in the Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    cooldown:
+      default-days: 10
+    open-pull-requests-limit: 5
+    reviewers:
+      - "RootstockCollective/maintainers"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      # Node majors need an engines review; patch/minor bumps carry the security releases
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Enable version updates for the Postgres image in compose.yml
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    cooldown:
+      default-days: 10
+    open-pull-requests-limit: 5
+    reviewers:
+      - "RootstockCollective/maintainers"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      # Postgres majors need a data migration
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
