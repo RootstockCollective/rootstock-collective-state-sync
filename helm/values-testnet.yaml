@@ -1,0 +1,15 @@
+namespace: testnet
+
+env:
+  NODE_ENV: "testnet"
+  NODE_CONFIG: '{"database":{"batchSize":5000}}'
+
+image:
+  repository: 886436934082.dkr.ecr.us-east-1.amazonaws.com/rscoll-state-sync-prod
+  tag: 05a1aea44a0bd537a8ba2b027ace6f3e99228a44
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync-prod-eks/testnet/database-uri
+    theGraphApiKeyCR: /dao-frontend/testnet/the-graph-api-key
+    theGraphApiKeyGov: /dao-frontend/testnet/dao-graph-api-key

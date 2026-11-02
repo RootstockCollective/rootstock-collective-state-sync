@@ -1,0 +1,15 @@
+namespace: mainnet
+
+env:
+  NODE_ENV: "mainnet"
+  NODE_CONFIG: '{"database":{"batchSize":5000}}'
+
+image:
+  repository: 886436934082.dkr.ecr.us-east-1.amazonaws.com/rscoll-state-sync-prod
+  tag: 05a1aea44a0bd537a8ba2b027ace6f3e99228a44
+
+externalSecrets:
+  parameterPaths:
+    databaseConnectionString: /rscoll-state-sync-prod-eks/mainnet/database-uri
+    theGraphApiKeyCR: /dao-frontend/mainnet/the-graph-api-key
+    theGraphApiKeyGov: /dao-frontend/mainnet/dao-graph-api-key
