@@ -19,7 +19,7 @@ jobs:
     name: Build and Push Image
     runs-on: ubuntu-latest
     environment:
-      name: testnet
+      name: Testnet
 
     permissions:
       id-token: write
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: testnet
+      name: Testnet
 
     permissions:
       id-token: write
